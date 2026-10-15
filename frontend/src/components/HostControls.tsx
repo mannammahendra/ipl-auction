@@ -1,0 +1,200 @@
+'use client';
+
+import React, { useState } from 'react';
+import { useAuctionStore } from '../lib/store';
+import { socketService } from '../lib/socket';
+import {
+  Play,
+  ShieldCheck,
+  ChevronDown,
+  ChevronUp,
+  Zap,
+} from 'lucide-react';
+
+export function HostControls() {
+  const { user, room, isTimerPaused, speedMultiplier, setSpeedMultiplier } = useAuctionStore();
+  const [collapsed, setCollapsed] = useState(false);
+  const [isEnding, setIsEnding] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+
+  const isHost = Boolean(
+    room &&
+      user &&
+      (room.hostId === user.id || room.members?.some((m) => m.userId === user.id && m.isHost))
+  );
+
+  if (!isHost || !room) {
+    return null;
+  }
+
+  const showFeedback = (msg: string) => {
+    setFeedback(msg);
+    setTimeout(() => setFeedback(null), 2500);
+  };
+
+  const handleStart = () => {
+    showFeedback('Starting Auction...');
+    socketService.startAuction(room.id);
+  };
+
+  const handlePause = () => {
+    showFeedback('Pausing Auction...');
+    socketService.pauseAuction(room.id);
+  };
+
+  const handleResume = () => {
+    showFeedback('Resuming Auction...');
+    socketService.resumeAuction(room.id);
+  };
+
+  const handleSkip = () => {
+    showFeedback('Skipping Player...');
+    socketService.skipPlayer(room.id);
+  };
+
+  const handleUndo = () => {
+    showFeedback('Undoing Last Lot...');
+    socketService.undoAction(room.id);
+  };
+
+  const handleBlitzClick = () => {
+    // Cycle: 1x -> 1.25x -> 1.5x -> 2x -> 1x
+    const current = speedMultiplier || 1.0;
+    let nextSpeed = 1.25;
+    if (current < 1.1) {
+      nextSpeed = 1.25;
+    } else if (current < 1.35) {
+      nextSpeed = 1.5;
+    } else if (current < 1.75) {
+      nextSpeed = 2.0;
+    } else {
+      nextSpeed = 1.0;
+    }
+
+    setSpeedMultiplier(nextSpeed);
+    showFeedback(nextSpeed === 1.0 ? 'Speed: 1x Normal' : `Speed: ${nextSpeed}x Blitz!`);
+    socketService.setAuctionSpeed(room.id, nextSpeed);
+  };
+
+  const handleEndAuction = () => {
+    setIsEnding(true);
+    showFeedback('Ending Auction...');
+    socketService.endAuction(room.id);
+    setTimeout(() => setIsEnding(false), 2000);
+  };
+
+  return (
+    <>
+      <div className="fixed bottom-2 left-1/2 -translate-x-1/2 z-50 pointer-events-auto select-none max-w-[95vw]">
+        {collapsed ? (
+          /* Vertically small collapsed button pill - strictly horizontal text without wrapping, snug padding */
+          <button
+            type="button"
+            onClick={() => setCollapsed(false)}
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-1 bg-slate-900/95 hover:bg-slate-800 border border-amber-500/60 hover:border-amber-400 rounded-full shadow-2xl backdrop-blur-xl text-white cursor-pointer transition-all active:scale-95 whitespace-nowrap shrink-0"
+            title="Host Console"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <span className="text-[11px] font-black uppercase tracking-wider text-amber-400 whitespace-nowrap">
+              Host Console
+            </span>
+            <ChevronUp className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+          </button>
+        ) : (
+          /* Vertically small expanded console: Host Console text on top, buttons horizontally below it */
+          <div className="bg-slate-900/95 border border-amber-500/60 rounded-xl shadow-2xl backdrop-blur-xl px-2.5 py-1 text-white flex flex-col items-center">
+            {/* Header toggle bar */}
+            <button
+              type="button"
+              onClick={() => setCollapsed(true)}
+              className="w-full flex items-center justify-between gap-3 py-0.5 px-1 rounded hover:bg-slate-800/80 transition-all cursor-pointer text-left"
+              title="Click to minimize Host Console"
+            >
+              <div className="flex items-center gap-1.5 shrink-0">
+                <ShieldCheck className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span className="text-[11px] font-black uppercase tracking-wider text-amber-400 whitespace-nowrap">
+                  Host Console
+                </span>
+              </div>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-300 hover:text-white shrink-0" />
+            </button>
+
+            {feedback && (
+              <div className="text-[10px] font-bold text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/40 animate-pulse my-0.5 whitespace-nowrap">
+                {feedback}
+              </div>
+            )}
+
+            {/* Buttons present below the host console text, strictly horizontal in a single row */}
+            <div className="flex flex-row flex-nowrap items-center justify-center gap-1.5 pt-1 shrink-0">
+              {room.status === 'LOBBY' ? (
+                <button
+                  onClick={handleStart}
+                  className="flex items-center justify-center gap-1 px-2.5 py-0.5 rounded-md bg-emerald-600 hover:bg-emerald-500 font-bold text-xs text-white shadow-md transition-colors whitespace-nowrap"
+                >
+                  <Play className="w-3 h-3" />
+                  <span>Start Auction</span>
+                </button>
+              ) : (
+                <>
+                  {isTimerPaused || room.isPaused ? (
+                    <button
+                      onClick={handleResume}
+                      className="px-2 py-0.5 rounded-md bg-emerald-600 hover:bg-emerald-500 font-bold text-xs transition-colors whitespace-nowrap"
+                    >
+                      Resume
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handlePause}
+                      className="px-2 py-0.5 rounded-md bg-amber-600 hover:bg-amber-500 font-bold text-xs transition-colors whitespace-nowrap"
+                    >
+                      Pause
+                    </button>
+                  )}
+
+                  <button
+                    onClick={handleSkip}
+                    className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 border border-slate-700 font-bold text-xs transition-colors whitespace-nowrap"
+                  >
+                    Skip
+                  </button>
+
+                  <button
+                    onClick={handleUndo}
+                    title="Undo last hammer strike and refund purse"
+                    className="px-2 py-0.5 rounded-md bg-indigo-950 hover:bg-indigo-900 border border-indigo-700/60 font-bold text-xs text-indigo-300 transition-colors whitespace-nowrap"
+                  >
+                    Undo
+                  </button>
+
+                  <button
+                    onClick={handleBlitzClick}
+                    title={`Blitz Speed: Currently ${speedMultiplier || 1}x. Click to change speed (1.25x -> 1.5x -> 2x -> 1x)`}
+                    className={`flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-xs transition-all whitespace-nowrap ${
+                      (speedMultiplier || 1) > 1
+                        ? 'bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/30 ring-1 ring-amber-300'
+                        : 'bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300'
+                    }`}
+                  >
+                    <Zap className={`w-3 h-3 ${(speedMultiplier || 1) > 1 ? 'text-slate-950 fill-slate-950' : 'text-amber-400'}`} />
+                    <span>Blitz{(speedMultiplier && speedMultiplier > 1) ? ` ${speedMultiplier}x` : ''}</span>
+                  </button>
+
+                  <button
+                    onClick={handleEndAuction}
+                    disabled={isEnding}
+                    title="Stop the entire auction and lock all squads"
+                    className="px-2 py-0.5 rounded-md bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 font-bold text-xs text-white shadow-sm transition-all hover:scale-105 active:scale-95 whitespace-nowrap disabled:opacity-50"
+                  >
+                    {isEnding ? 'Ending...' : 'End'}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}

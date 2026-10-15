@@ -1,0 +1,179 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  email     String?  @unique
+  password  String?
+  isGuest   Boolean  @default(false)
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  hostedRooms Room[]        @relation("HostRooms")
+  memberships RoomMember[]
+  bids        Bid[]
+}
+
+model Room {
+  id                   String        @id @default(uuid())
+  code                 String        @unique
+  name                 String
+  password             String?
+  hostId               String
+  host                 User          @relation("HostRooms", fields: [hostId], references: [id], onDelete: Cascade)
+  status               String        @default("LOBBY") // LOBBY, CONFIGURING, AUCTION_ACTIVE, PAUSED, COMPLETED
+  
+  // Rules and Configuration
+  startingPurse        Float         @default(1200000000) // Default 120 Crore in Rupees
+  minSquad             Int           @default(18)
+  maxSquad             Int           @default(25)
+  maxOverseas          Int           @default(8)
+  bidTimerSeconds      Int           @default(25)
+  snipeExtensionSeconds Int          @default(10)
+  currentRound         Int           @default(1)
+  
+  // Live Active State
+  currentAuctionPlayerId String?
+  currentBidAmount     Float?        @default(0)
+  currentBidTeamId     String?
+  timerEndsAt          DateTime?
+  isPaused             Boolean       @default(false)
+  lastBidTime          DateTime?
+  
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  members              RoomMember[]
+  teams                Team[]
+  auctionPlayers       AuctionPlayer[]
+  bids                 Bid[]
+  auditLogs            AuctionAuditLog[]
+}
+
+model RoomMember {
+  id        String   @id @default(uuid())
+  roomId    String
+  userId    String
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teamId    String?
+  team      Team?    @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  isHost    Boolean  @default(false)
+  isReady   Boolean  @default(false)
+  isOnline  Boolean  @default(true)
+  socketId  String?
+  joinedAt  DateTime @default(now())
+
+  @@unique([roomId, userId])
+}
+
+model Team {
+  id             String        @id @default(uuid())
+  roomId         String
+  room           Room          @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  name           String
+  shortName      String
+  color          String        @default("#E11D48")
+  secondaryColor String        @default("#1E293B")
+  logo           String?
+  initialPurse   Float         @default(1200000000)
+  currentPurse   Float         @default(1200000000)
+  totalPlayers   Int           @default(0)
+  overseasCount  Int           @default(0)
+  isDefault      Boolean       @default(false)
+  
+  members        RoomMember[]
+  bids           Bid[]
+  squad          SquadMember[]
+
+  @@unique([roomId, shortName])
+}
+
+model Player {
+  id           String          @id @default(uuid())
+  name         String
+  country      String
+  isOverseas   Boolean         @default(false)
+  role         String          // BATSMAN, BOWLER, ALL_ROUNDER, WICKET_KEEPER
+  battingStyle String?
+  bowlingStyle String?
+  tier         String          @default("CAPPED") // MARQUEE, CAPPED, UNCAPPED, ACCELERATED
+  basePrice    Float           @default(20000000) // Default 2 Crore in Rupees
+  image        String?
+  stats        String?         // JSON string with matches, runs, wickets, etc.
+  createdAt    DateTime        @default(now())
+
+  auctionPools AuctionPlayer[]
+  squadMembers SquadMember[]
+}
+
+model AuctionPlayer {
+  id           String        @id @default(uuid())
+  roomId       String
+  room         Room          @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  playerId     String
+  player       Player        @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  status       String        @default("UPCOMING") // UPCOMING, NOMINATED, SOLD, UNSOLD, PASSED
+  lotNumber    Int           @default(0)
+  soldPrice    Float?
+  soldToTeamId String?
+  nominatedAt  DateTime?
+  soldAt       DateTime?
+  round        Int           @default(1)
+
+  bids         Bid[]
+  squadMembers SquadMember[]
+
+  @@unique([roomId, playerId])
+  @@index([roomId, status])
+}
+
+model Bid {
+  id              String        @id @default(uuid())
+  roomId          String
+  room            Room          @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  auctionPlayerId String
+  auctionPlayer   AuctionPlayer @relation(fields: [auctionPlayerId], references: [id], onDelete: Cascade)
+  teamId          String
+  team            Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  bidderUserId    String
+  bidder          User          @relation(fields: [bidderUserId], references: [id], onDelete: Cascade)
+  amount          Float
+  bidNumber       Int
+  createdAt       DateTime      @default(now())
+
+  @@index([roomId, auctionPlayerId])
+  @@index([createdAt])
+}
+
+model SquadMember {
+  id              String        @id @default(uuid())
+  teamId          String
+  team            Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  auctionPlayerId String
+  auctionPlayer   AuctionPlayer @relation(fields: [auctionPlayerId], references: [id], onDelete: Cascade)
+  playerId        String
+  player          Player        @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  purchasePrice   Float
+  purchasedAt     DateTime      @default(now())
+}
+
+model AuctionAuditLog {
+  id        String   @id @default(uuid())
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  action    String
+  details   String   // JSON string
+  timestamp DateTime @default(now())
+
+  @@index([roomId, timestamp])
+}
+

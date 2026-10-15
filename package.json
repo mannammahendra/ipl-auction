@@ -1,0 +1,27 @@
+{
+  "name": "ipl-auction-platform",
+  "version": "1.0.0",
+  "description": "Production-grade Multiplayer IPL Auction Platform",
+  "private": true,
+  "scripts": {
+    "dev:backend": "npm --prefix backend run start:dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build:backend": "npm --prefix backend run build",
+    "build:frontend": "npm --prefix frontend run build",
+    "seed": "npm --prefix backend run prisma:seed",
+    "prisma:generate": "npm --prefix backend run prisma:generate",
+    "prisma:push": "npm --prefix backend run prisma:push"
+  },
+  "keywords": [
+    "ipl",
+    "auction",
+    "realtime",
+    "multiplayer",
+    "nestjs",
+    "nextjs",
+    "socketio"
+  ],
+  "author": "",
+  "license": "ISC"
+}
+
