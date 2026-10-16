@@ -1,13 +1,33 @@
-function getBaseUrl(): string {
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL;
+const CLOUD_BACKEND_URL = 'https://ipl-auction-backend-8t5h.onrender.com';
+
+function getCandidateUrls(endpoint: string): string[] {
+  const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const candidates: string[] = [];
+
+  const isBrowser = typeof window !== 'undefined';
+  const isLocalHost = isBrowser && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+  if (isLocalHost) {
+    // Local dev: try localhost port 4000 first, then relative Next.js proxy
+    candidates.push(`http://localhost:4000${normalizedEndpoint}`);
+    candidates.push(normalizedEndpoint);
+    return candidates;
   }
-  if (typeof window !== 'undefined') {
-    // In browser: return empty string so requests use relative path through Next.js proxy (/api/...)
-    // This avoids cross-origin blocking, separate port firewall issues, and connection hangs on mobile!
-    return '';
+
+  // Production Cloud / Mobile App:
+  // 1. Direct Cloud Backend
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+    candidates.push(`${envUrl.replace(/\/$/, '')}${normalizedEndpoint}`);
   }
-  return process.env.INTERNAL_API_URL || 'https://ipl-auction-backend-8t5h.onrender.com';
+  candidates.push(`${CLOUD_BACKEND_URL}${normalizedEndpoint}`);
+
+  // 2. Relative Next.js rewrite proxy (/api/...) as cloud fallback
+  if (isBrowser) {
+    candidates.push(normalizedEndpoint);
+  }
+
+  return Array.from(new Set(candidates));
 }
 
 class ApiClient {
@@ -45,6 +65,23 @@ class ApiClient {
     }
   }
 
+  /**
+   * Proactively ping backend to wake up cloud instance from sleep
+   */
+  async warmup(): Promise<void> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
+      await fetch(`${CLOUD_BACKEND_URL}/health`, {
+        method: 'GET',
+        signal: controller.signal,
+      }).catch(() => null);
+      clearTimeout(timeoutId);
+    } catch {
+      // Non-critical background warmup
+    }
+  }
+
   async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const token = this.getToken();
     const headers: Record<string, string> = {
@@ -56,47 +93,54 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const baseUrl = getBaseUrl();
-    const targetUrl = `${baseUrl}${endpoint}`;
+    const candidateUrls = getCandidateUrls(endpoint);
+    let lastError: Error | null = null;
 
-    let res: Response;
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-      res = await fetch(targetUrl, {
-        ...options,
-        headers,
-        signal: options.signal || controller.signal,
-      });
-      clearTimeout(timeoutId);
-    } catch (err: any) {
-      // If relative fetch encounters an issue in browser, try direct backend port 4000 as fallback
-      if (typeof window !== 'undefined' && !targetUrl.includes(':4000')) {
+    // Retry loop: 2 passes across candidate URLs (allows waking up sleeping Render containers)
+    for (let pass = 0; pass < 2; pass++) {
+      for (const targetUrl of candidateUrls) {
+        let res: Response;
         try {
-          const directUrl = `${window.location.protocol}//${window.location.hostname}:4000${endpoint}`;
-          const fallbackController = new AbortController();
-          const fallbackTimeout = setTimeout(() => fallbackController.abort(), 10000);
-          res = await fetch(directUrl, {
+          const controller = new AbortController();
+          // Allow 25 seconds for cold start spin-up on Render free tier
+          const timeoutId = setTimeout(() => controller.abort(), 25000);
+          res = await fetch(targetUrl, {
             ...options,
             headers,
-            signal: options.signal || fallbackController.signal,
+            signal: options.signal || controller.signal,
           });
-          clearTimeout(fallbackTimeout);
-        } catch {
-          throw new Error('Unable to connect to the auction server. Please ensure the backend is running and your device is on the same Wi-Fi network.');
+          clearTimeout(timeoutId);
+
+          // If Render returned 502/503 (container still spinning up), treat as retryable
+          if (res.status === 502 || res.status === 503) {
+            lastError = new Error('Cloud auction server is waking up...');
+            continue;
+          }
+
+          const data = await res.json().catch(() => null);
+          if (!res.ok) {
+            throw new Error(data?.message || `Request failed with status ${res.status}`);
+          }
+
+          return data as T;
+        } catch (err: any) {
+          lastError = err;
+          // Continue to next candidate URL
         }
-      } else {
-        throw new Error('Unable to connect to the auction server. Please ensure the backend is running.');
+      }
+
+      // Small pause before second pass if server is waking up
+      if (pass === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
       }
     }
 
-    const data = await res.json().catch(() => null);
-
-    if (!res.ok) {
-      throw new Error(data?.message || `Request failed with status ${res.status}`);
-    }
-
-    return data as T;
+    // Friendly, accurate cloud message with zero misleading local Wi-Fi advice
+    throw new Error(
+      lastError?.message && !lastError.message.includes('fetch') && !lastError.message.includes('abort')
+        ? lastError.message
+        : 'Unable to connect to the IPL Auction cloud server. The server may be waking up from standby—please try again in a few moments.'
+    );
   }
 
   auth = {

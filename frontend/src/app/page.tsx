@@ -35,6 +35,7 @@ function LandingContent() {
   const [maxOverseas, setMaxOverseas] = useState<number>(4);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -44,6 +45,8 @@ function LandingContent() {
       setRoomCode(joinCodeParam);
       setActiveTab('join');
     }
+    // Proactively warm up cloud backend if sleeping
+    api.warmup();
   }, [joinCodeParam, router]);
 
   const handleJoinRoom = async (e: React.FormEvent) => {
@@ -54,9 +57,15 @@ function LandingContent() {
     }
     const finalName = displayName.trim() || `Manager_${Math.floor(100 + Math.random() * 900)}`;
 
+    let warmupTimer: any = null;
     try {
       setIsLoading(true);
       setErrorMessage(null);
+      setLoadingStatus('Connecting to room...');
+
+      warmupTimer = setTimeout(() => {
+        setLoadingStatus('Connecting to cloud server (standby wake-up in progress)...');
+      }, 3500);
 
       // 1. Guest login
       const auth = await api.auth.guest(finalName);
@@ -77,9 +86,12 @@ function LandingContent() {
       if (msg.includes('404') || msg.toLowerCase().includes('not found')) {
         setErrorMessage(`Room "${roomCode}" was not found. Please verify the code or click "Create Room" above to host a new auction.`);
       } else {
-        setErrorMessage(msg || 'Failed to join room. Please check your connection.');
+        setErrorMessage(msg || 'Failed to join room. Please check your internet connection.');
       }
       setIsLoading(false);
+      setLoadingStatus(null);
+    } finally {
+      if (warmupTimer) clearTimeout(warmupTimer);
     }
   };
 
@@ -104,9 +116,15 @@ function LandingContent() {
     }
     const overseas = Math.min(Math.max(1, Number(maxOverseas) || 4), squad);
 
+    let warmupTimer: any = null;
     try {
       setIsLoading(true);
       setErrorMessage(null);
+      setLoadingStatus('Creating auction room...');
+
+      warmupTimer = setTimeout(() => {
+        setLoadingStatus('Connecting to cloud server (standby wake-up in progress)...');
+      }, 3500);
 
       // 1. Guest login as host
       const auth = await api.auth.guest(finalName);
@@ -128,8 +146,11 @@ function LandingContent() {
 
       router.push(`/lobby/${room.id}`);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to create auction room. Please check your connection.');
+      setErrorMessage(err.message || 'Failed to create auction room. Please check your internet connection.');
       setIsLoading(false);
+      setLoadingStatus(null);
+    } finally {
+      if (warmupTimer) clearTimeout(warmupTimer);
     }
   };
 
@@ -302,7 +323,10 @@ function LandingContent() {
                   className="w-full py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 disabled:opacity-50 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg transition-transform hover:scale-[1.01] flex items-center justify-center gap-1.5 mt-1"
                 >
                   {isLoading ? (
-                    <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                    <div className="flex items-center gap-2">
+                      <div className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                      <span>{loadingStatus || 'Connecting...'}</span>
+                    </div>
                   ) : (
                     <>
                       <span>Enter Auction Room</span>
@@ -374,7 +398,10 @@ function LandingContent() {
                   className="w-full py-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 disabled:opacity-50 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg transition-transform hover:scale-[1.01] flex items-center justify-center gap-1.5 mt-1"
                 >
                   {isLoading ? (
-                    <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                    <div className="flex items-center gap-2">
+                      <div className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                      <span>{loadingStatus || 'Creating Room...'}</span>
+                    </div>
                   ) : (
                     <>
                       <span>Create Auction Room</span>

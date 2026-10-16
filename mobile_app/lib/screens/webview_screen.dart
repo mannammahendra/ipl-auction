@@ -19,6 +19,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
   late final WebViewController _controller;
   bool _isLoading = true;
   String? _errorMessage;
+  int _retryCount = 0;
   late final String _currentUrl;
 
   @override
@@ -59,18 +60,30 @@ class _WebViewScreenState extends State<WebViewScreen> {
           },
           onPageFinished: (String url) {
             if (mounted) {
-              setState(() => _isLoading = false);
+              setState(() {
+                _isLoading = false;
+                _retryCount = 0;
+              });
             }
           },
           onWebResourceError: (WebResourceError error) {
             // Only report critical main-frame errors to prevent harmless subresource failures from blocking the app
             if (error.isForMainFrame == true && error.errorCode != -1) {
               if (mounted) {
-                setState(() {
-                  _isLoading = false;
-                  _errorMessage =
-                      'Unable to connect to the auction server.\n\nPlease ensure your device is connected to the same Wi-Fi network.';
-                });
+                if (_retryCount < 3) {
+                  _retryCount++;
+                  Future.delayed(const Duration(seconds: 2), () {
+                    if (mounted) {
+                      _controller.reload();
+                    }
+                  });
+                } else {
+                  setState(() {
+                    _isLoading = false;
+                    _errorMessage =
+                        'Unable to connect to the IPL Auction cloud server.\n\nThe server may be waking up from standby or your internet connection was temporarily interrupted.\n\nPlease tap Retry Connection below.';
+                  });
+                }
               }
             }
           },
@@ -117,7 +130,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Icon(
-                          Icons.wifi_off_rounded,
+                          Icons.cloud_off_rounded,
                           size: 64,
                           color: Color(0xFFF43F5E),
                         ),
