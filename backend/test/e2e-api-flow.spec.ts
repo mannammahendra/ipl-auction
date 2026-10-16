@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 
-const BASE_URL = process.env.API_BASE_URL || 'http://localhost:4000';
+const BASE_URL = process.env.API_BASE_URL || 'http://127.0.0.1:4000';
 
 describe('Live API & Auction Engine Integration E2E Flow', () => {
   let authToken = '';

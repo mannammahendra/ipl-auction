@@ -81,3 +81,4 @@ describe('Frontend Formatter Unit Tests', () => {
     expect(formatTime(600)).toBe('10:00');
   });
 });
+

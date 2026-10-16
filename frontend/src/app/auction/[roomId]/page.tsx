@@ -138,12 +138,17 @@ export default function LiveAuctionArenaPage() {
         }
 
         // Immediately vocalize current player if auction already in progress or newly started
-        if (roomData.status === 'AUCTION_ACTIVE' && roomData.currentAuctionPlayer?.player) {
-          const initP = roomData.currentAuctionPlayer.player;
-          if (initP && initP.id !== lastAnnouncedPlayerIdRef.current) {
-            lastAnnouncedPlayerIdRef.current = initP.id;
+        if (
+          roomData.status === 'AUCTION_ACTIVE' &&
+          roomData.currentAuctionPlayer?.status === 'NOMINATED' &&
+          roomData.currentAuctionPlayer?.player
+        ) {
+          const cap = roomData.currentAuctionPlayer;
+          const canonicalId = cap.id || cap.player.id;
+          if (canonicalId && canonicalId !== lastAnnouncedPlayerIdRef.current) {
+            lastAnnouncedPlayerIdRef.current = canonicalId;
             setTimeout(() => {
-              auctioneerVoice.announceNomination(initP.name, initP.role);
+              auctioneerVoice.announceNomination(cap.player.name, cap.player.role);
             }, 300);
           }
         }
@@ -156,8 +161,17 @@ export default function LiveAuctionArenaPage() {
         socket.on('room_sync', (data: any) => {
           syncRoomState(data);
           const cp = data.currentAuctionPlayer || data.room?.currentAuctionPlayer;
-          if (cp?.player && cp.id !== lastAnnouncedPlayerIdRef.current && (data.room?.status === 'AUCTION_ACTIVE' || roomData.status === 'AUCTION_ACTIVE')) {
-            lastAnnouncedPlayerIdRef.current = cp.id;
+          const canonicalId = cp?.id || cp?.player?.id;
+          // Strictly only announce if the player is actively open for bidding (status === 'NOMINATED')
+          // and has not already been announced in this session
+          if (
+            cp?.status === 'NOMINATED' &&
+            cp?.player &&
+            canonicalId &&
+            canonicalId !== lastAnnouncedPlayerIdRef.current &&
+            (data.room?.status === 'AUCTION_ACTIVE' || roomData.status === 'AUCTION_ACTIVE')
+          ) {
+            lastAnnouncedPlayerIdRef.current = canonicalId;
             auctioneerVoice.announceNomination(cp.player.name, cp.player.role);
           }
         });
@@ -193,9 +207,11 @@ export default function LiveAuctionArenaPage() {
         socket.on('player_nominated', (data: any) => {
           onPlayerNominated(data);
           auctioneerVoice.resetBiddingCadence();
-          const p = data.auctionPlayer?.player;
-          if (p) {
-            lastAnnouncedPlayerIdRef.current = data.auctionPlayer?.id || p.id;
+          const ap = data.auctionPlayer;
+          const p = ap?.player;
+          const canonicalId = ap?.id || p?.id;
+          if (p && canonicalId && canonicalId !== lastAnnouncedPlayerIdRef.current) {
+            lastAnnouncedPlayerIdRef.current = canonicalId;
             auctioneerVoice.announceNomination(p.name, p.role);
           }
         });
@@ -203,6 +219,10 @@ export default function LiveAuctionArenaPage() {
         // 4. Sold: ONLY "Sold to {team} for {amount}!"
         socket.on('player_sold', (data: any) => {
           onPlayerSold(data);
+          const soldId = data.auctionPlayer?.id || data.auctionPlayer?.player?.id;
+          if (soldId) {
+            lastAnnouncedPlayerIdRef.current = soldId;
+          }
           const currentRoom = useAuctionStore.getState().room;
           const winningTeam = currentRoom?.teams?.find((t) => t.id === data.auctionPlayer?.soldToTeamId);
           const teamName = winningTeam?.name || winningTeam?.shortName || 'Franchise';
@@ -213,6 +233,10 @@ export default function LiveAuctionArenaPage() {
         // 5. Unsold: all sounds when player is unsold removed
         socket.on('player_unsold', (data: any) => {
           onPlayerUnsold(data);
+          const unsoldId = data.auctionPlayer?.id || data.auctionPlayer?.player?.id;
+          if (unsoldId) {
+            lastAnnouncedPlayerIdRef.current = unsoldId;
+          }
         });
 
         socket.on('auction_paused', (data: any) => {

@@ -442,6 +442,12 @@ export const useAuctionStore = create<AuctionStore>((set) => ({
 
       return {
         room: updatedRoom,
+        currentAuctionPlayer: {
+          ...auctionPlayer,
+          status: 'SOLD' as const,
+          soldPrice,
+          soldToTeamId: winningTeam.id,
+        },
         soldCelebration: {
           player: auctionPlayer.player,
           team: winningTeam,
@@ -463,6 +469,10 @@ export const useAuctionStore = create<AuctionStore>((set) => ({
 
       return {
         room: updatedRoom,
+        currentAuctionPlayer: {
+          ...auctionPlayer,
+          status: 'UNSOLD' as const,
+        },
         unsoldNotice: { player: auctionPlayer.player },
         currentBidAmount: 0,
         currentBidTeamId: null,

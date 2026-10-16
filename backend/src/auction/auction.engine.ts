@@ -602,6 +602,15 @@ export class AuctionEngine implements OnApplicationBootstrap {
             },
           });
 
+          await tx.room.update({
+            where: { id: roomId },
+            data: {
+              currentAuctionPlayerId: null,
+              currentBidAmount: 0,
+              currentBidTeamId: null,
+            },
+          });
+
           await tx.auctionAuditLog.create({
             data: {
               roomId,
@@ -671,6 +680,15 @@ export class AuctionEngine implements OnApplicationBootstrap {
           await tx.auctionPlayer.update({
             where: { id: auctionPlayer.id },
             data: { status: 'UNSOLD', soldAt: new Date() },
+          });
+
+          await tx.room.update({
+            where: { id: roomId },
+            data: {
+              currentAuctionPlayerId: null,
+              currentBidAmount: 0,
+              currentBidTeamId: null,
+            },
           });
 
           await tx.auctionAuditLog.create({

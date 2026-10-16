@@ -225,15 +225,21 @@ export class AuctionGateway implements OnGatewayConnection, OnGatewayDisconnect 
         include: { player: true },
       });
 
-      currentBids = await this.prisma.bid.findMany({
-        where: { roomId: actualRoomId, auctionPlayerId: room.currentAuctionPlayerId },
-        include: {
-          team: true,
-          bidder: { select: { id: true, username: true } },
-        },
-        orderBy: { amount: 'desc' },
-        take: 20,
-      });
+      if (currentAuctionPlayer && currentAuctionPlayer.status !== 'NOMINATED') {
+        currentAuctionPlayer = null;
+      }
+
+      if (currentAuctionPlayer) {
+        currentBids = await this.prisma.bid.findMany({
+          where: { roomId: actualRoomId, auctionPlayerId: room.currentAuctionPlayerId },
+          include: {
+            team: true,
+            bidder: { select: { id: true, username: true } },
+          },
+          orderBy: { amount: 'desc' },
+          take: 20,
+        });
+      }
     }
 
     const timerState = this.auctionEngine.getTimerState(actualRoomId);

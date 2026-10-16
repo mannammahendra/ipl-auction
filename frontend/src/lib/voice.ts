@@ -444,7 +444,7 @@ class AuctioneerVoiceService {
     };
     utterance.onerror = (e) => {
       this.currentUtterance = null;
-      if (e.error === 'not-allowed' || e.error === 'interrupted') {
+      if (e.error === 'not-allowed') {
         this.pendingText = text;
       }
     };
@@ -471,7 +471,6 @@ class AuctioneerVoiceService {
       ALL_ROUNDER: 'All-Rounder',
     };
     const text = `${playerName}, ${roles[role] || 'Batsman'}.`;
-    this.pendingText = text;
     this.speak(text, false, this.rate);
   }
 

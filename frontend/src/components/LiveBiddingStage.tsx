@@ -33,12 +33,18 @@ export function LiveBiddingStage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (remainingTimer <= 3 && remainingTimer > 0 && !isTimerPaused && currentAuctionPlayer) {
+    if (
+      remainingTimer <= 3 &&
+      remainingTimer > 0 &&
+      !isTimerPaused &&
+      currentAuctionPlayer &&
+      currentAuctionPlayer.status === 'NOMINATED'
+    ) {
       soundFx.playWarningTick();
     }
   }, [remainingTimer, isTimerPaused, currentAuctionPlayer]);
 
-  if (!room || !currentAuctionPlayer) {
+  if (!room || !currentAuctionPlayer || currentAuctionPlayer.status === 'SOLD' || currentAuctionPlayer.status === 'UNSOLD') {
     return null;
   }
 
