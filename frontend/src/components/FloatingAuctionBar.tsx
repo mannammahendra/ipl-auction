@@ -10,7 +10,7 @@ import { Timer } from 'lucide-react';
 import { PlayerPortrait } from './PlayerPortrait';
 import { calculateNextValidBid } from '../lib/auctionRules';
 
-export const FloatingAuctionBar: React.FC = () => {
+export const FloatingAuctionBar: React.FC = React.memo(function FloatingAuctionBar() {
   const {
     room,
     currentAuctionPlayer,
@@ -197,5 +197,6 @@ export const FloatingAuctionBar: React.FC = () => {
       </div>
     </aside>
   );
-};
+});
+
 

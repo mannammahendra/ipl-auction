@@ -11,8 +11,15 @@ import {
   Zap,
 } from 'lucide-react';
 
-export function HostControls() {
-  const { user, room, isTimerPaused, speedMultiplier, setSpeedMultiplier, setTimer, chatOpen } = useAuctionStore();
+export const HostControls = React.memo(function HostControls() {
+  const user = useAuctionStore((s) => s.user);
+  const room = useAuctionStore((s) => s.room);
+  const isTimerPaused = useAuctionStore((s) => s.isTimerPaused);
+  const speedMultiplier = useAuctionStore((s) => s.speedMultiplier);
+  const setSpeedMultiplier = useAuctionStore((s) => s.setSpeedMultiplier);
+  const setTimer = useAuctionStore((s) => s.setTimer);
+  const chatOpen = useAuctionStore((s) => s.chatOpen);
+
   const [collapsed, setCollapsed] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -90,13 +97,13 @@ export function HostControls() {
 
   return (
     <>
-      <div className="fixed bottom-2 left-1/2 -translate-x-1/2 z-50 pointer-events-auto select-none max-w-[95vw]">
+      <div className="fixed bottom-2 left-1/2 -translate-x-1/2 z-50 pointer-events-auto select-none max-w-[95vw] transform-gpu will-change-transform">
         {collapsed ? (
           /* Vertically small collapsed button pill - strictly horizontal text without wrapping, snug padding */
           <button
             type="button"
             onClick={() => setCollapsed(false)}
-            className="inline-flex items-center justify-center gap-1.5 px-3 py-1 bg-slate-900/95 hover:bg-slate-800 border border-amber-500/60 hover:border-amber-400 rounded-full shadow-2xl backdrop-blur-xl text-white cursor-pointer transition-all active:scale-95 whitespace-nowrap shrink-0"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-1 bg-slate-900/98 hover:bg-slate-800 border border-amber-500/70 hover:border-amber-400 rounded-full shadow-xl text-white cursor-pointer transition-transform active:scale-95 whitespace-nowrap shrink-0"
             title="Host Console"
           >
             <ShieldCheck className="w-3.5 h-3.5 text-amber-400 shrink-0" />
@@ -107,12 +114,12 @@ export function HostControls() {
           </button>
         ) : (
           /* Vertically small expanded console: Host Console text on top, buttons horizontally below it */
-          <div className="bg-slate-900/95 border border-amber-500/60 rounded-xl shadow-2xl backdrop-blur-xl px-2.5 py-1 text-white flex flex-col items-center">
+          <div className="bg-slate-900/98 border border-amber-500/70 rounded-xl shadow-xl px-2.5 py-1 text-white flex flex-col items-center">
             {/* Header toggle bar */}
             <button
               type="button"
               onClick={() => setCollapsed(true)}
-              className="w-full flex items-center justify-between gap-3 py-0.5 px-1 rounded hover:bg-slate-800/80 transition-all cursor-pointer text-left"
+              className="w-full flex items-center justify-between gap-3 py-0.5 px-1 rounded hover:bg-slate-800/80 transition-colors cursor-pointer text-left"
               title="Click to minimize Host Console"
             >
               <div className="flex items-center gap-1.5 shrink-0">
@@ -202,4 +209,4 @@ export function HostControls() {
       </div>
     </>
   );
-}
+});

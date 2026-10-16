@@ -10,14 +10,19 @@ interface FranchiseLeaderboardProps {
   onSelectTeam?: (team: Team) => void;
 }
 
-export function FranchiseLeaderboard({ onSelectTeam }: FranchiseLeaderboardProps) {
-  const { room, user } = useAuctionStore();
+export const FranchiseLeaderboard = React.memo(function FranchiseLeaderboard({ onSelectTeam }: FranchiseLeaderboardProps) {
+  const room = useAuctionStore((s) => s.room);
+  const user = useAuctionStore((s) => s.user);
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null);
+
+  const sortedTeams = React.useMemo(() => {
+    if (!room?.teams) return [];
+    return [...room.teams].sort((a, b) => b.currentPurse - a.currentPurse);
+  }, [room?.teams]);
 
   if (!room || !room.teams) return null;
 
   const myMember = room.members?.find((m) => m.userId === user?.id);
-  const sortedTeams = [...room.teams].sort((a, b) => b.currentPurse - a.currentPurse);
 
   const toggleTeam = (teamId: string) => {
     setExpandedTeamId((prev) => (prev === teamId ? null : teamId));
@@ -201,4 +206,4 @@ export function FranchiseLeaderboard({ onSelectTeam }: FranchiseLeaderboardProps
       </div>
     </div>
   );
-}
+});

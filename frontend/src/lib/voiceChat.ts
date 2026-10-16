@@ -45,7 +45,7 @@ class VoiceChatManager {
       });
 
       // Ensure local tracks are immediately attached to all active peer connections
-      this.peerConnections.forEach((pc) => {
+      this.peerConnections.forEach((pc, remoteSocketId) => {
         this.localStream!.getTracks().forEach((track) => {
           const senders = pc.getSenders();
           const alreadyAdded = senders.some((s) => s.track?.id === track.id);
@@ -53,6 +53,13 @@ class VoiceChatManager {
             pc.addTrack(track, this.localStream!);
           }
         });
+        // Proactively renegotiate now that local audio track is live
+        if (pc.signalingState === 'stable') {
+          pc.createOffer({ offerToReceiveAudio: true })
+            .then((offer) => pc.setLocalDescription(offer))
+            .then(() => socketService.sendVoiceSignal(remoteSocketId, pc.localDescription))
+            .catch((e) => console.warn('Renegotiation offer error:', e));
+        }
       });
 
       useAuctionStore.getState().setVoiceConnected(true);
@@ -226,6 +233,10 @@ class VoiceChatManager {
         audio.autoplay = true;
         (audio as any).playsInline = true;
         audio.volume = 1.0;
+        audio.style.display = 'none';
+        if (typeof document !== 'undefined' && document.body) {
+          document.body.appendChild(audio);
+        }
         this.audioElements.set(remoteSocketId, audio);
       }
       audio.srcObject = event.streams[0];
@@ -244,24 +255,28 @@ class VoiceChatManager {
       }
     };
 
-    if (isInitiator) {
-      pc.onnegotiationneeded = async () => {
-        try {
-          if (pc.signalingState !== 'stable') return;
-          const offer = await pc.createOffer();
-          await pc.setLocalDescription(offer);
-          socketService.sendVoiceSignal(remoteSocketId, offer);
-        } catch (err) {
-          console.warn('Error creating offer for peer:', remoteSocketId, err);
-        }
-      };
-    }
+    const handleNegotiation = async () => {
+      try {
+        if (pc.signalingState !== 'stable') return;
+        const offer = await pc.createOffer({ offerToReceiveAudio: true });
+        await pc.setLocalDescription(offer);
+        socketService.sendVoiceSignal(remoteSocketId, offer);
+      } catch (err) {
+        console.warn('Error creating offer for peer:', remoteSocketId, err);
+      }
+    };
+
+    pc.onnegotiationneeded = handleNegotiation;
 
     // Add local tracks if available AFTER handlers are registered
     if (this.localStream) {
       this.localStream.getTracks().forEach((track) => {
         pc.addTrack(track, this.localStream!);
       });
+    }
+
+    if (isInitiator) {
+      setTimeout(handleNegotiation, 60);
     }
 
     return pc;

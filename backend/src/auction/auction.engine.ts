@@ -1141,10 +1141,15 @@ export class AuctionEngine implements OnApplicationBootstrap {
         },
       });
 
+      const updatedTeams = await this.prisma.team.findMany({
+        where: { roomId },
+      });
+
       this.broadcast('action_undone', roomId, {
         revertedPlayer: lastFinalized,
         hostName,
         playerName: lastFinalized.player.name,
+        teams: updatedTeams,
         message: `↩️ Host (${hostName}) undid the hammer action for ${lastFinalized.player.name}.`,
       });
 

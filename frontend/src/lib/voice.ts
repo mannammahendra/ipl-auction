@@ -29,6 +29,7 @@ class AuctioneerVoiceService {
   private measuredTickInterval: number = 1000;
   private currentRemainingSeconds: number = 25;
   private activeTimerSpeed: number = 1.0;
+  private pendingText: string | null = null;
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -61,6 +62,11 @@ class AuctioneerVoiceService {
       if (window.speechSynthesis) {
         window.speechSynthesis.onvoiceschanged = () => {
           this.initVoices();
+          if (this.pendingText) {
+            const t = this.pendingText;
+            this.pendingText = null;
+            this.speak(t);
+          }
         };
       }
 
@@ -87,6 +93,12 @@ class AuctioneerVoiceService {
       const warmup = new SpeechSynthesisUtterance('');
       warmup.volume = 0;
       window.speechSynthesis.speak(warmup);
+
+      if (this.pendingText) {
+        const t = this.pendingText;
+        this.pendingText = null;
+        this.speak(t);
+      }
     } catch (e) {}
   }
 
@@ -424,11 +436,17 @@ class AuctioneerVoiceService {
 
     // Retain in memory to prevent Chrome GC bug cutting off utterance
     this.currentUtterance = utterance;
+    utterance.onstart = () => {
+      this.pendingText = null;
+    };
     utterance.onend = () => {
       this.currentUtterance = null;
     };
-    utterance.onerror = () => {
+    utterance.onerror = (e) => {
       this.currentUtterance = null;
+      if (e.error === 'not-allowed' || e.error === 'interrupted') {
+        this.pendingText = text;
+      }
     };
 
     // Chromium requires a brief micro-delay after cancel() so the audio channel flushes cleanly
@@ -447,15 +465,14 @@ class AuctioneerVoiceService {
   // 1. Announce Player Coming to Podium: ONLY player name & type, brisk & punchy
   // e.g. "Virat Kohli, Batsman." or "MS Dhoni, Wicket-Keeper."
   public announceNomination(playerName: string, role: string) {
-    let roleText = 'Batsman';
-    if (role === 'WICKET_KEEPER') {
-      roleText = 'Wicket-Keeper';
-    } else if (role === 'BOWLER') {
-      roleText = 'Bowler';
-    } else if (role === 'ALL_ROUNDER') {
-      roleText = 'All-Rounder';
-    }
-    this.speak(`${playerName}, ${roleText}.`, false, this.rate);
+    const roles: Record<string, string> = {
+      WICKET_KEEPER: 'Wicket-Keeper',
+      BOWLER: 'Bowler',
+      ALL_ROUNDER: 'All-Rounder',
+    };
+    const text = `${playerName}, ${roles[role] || 'Batsman'}.`;
+    this.pendingText = text;
+    this.speak(text, false, this.rate);
   }
 
   // 2. Announce Live Bid: Speak out Team and Amount in Ellie Goulding voice

@@ -237,9 +237,16 @@ export default function LiveAuctionArenaPage() {
           triggerHostAlert(data?.message || `⏭️ Host skipped ${data?.playerName || 'player'}`, 'skip');
         });
 
-        socket.on('action_undone', async (data: any) => {
-          const updated = await api.rooms.get(roomData.id);
-          setRoom(updated);
+        socket.on('action_undone', (data: any) => {
+          if (data?.teams) {
+            const currentRoom = useAuctionStore.getState().room;
+            if (currentRoom) {
+              useAuctionStore.getState().setRoom({
+                ...currentRoom,
+                teams: data.teams,
+              });
+            }
+          }
           triggerHostAlert(data?.message || '↩️ Host undid the last hammer action', 'undo');
         });
 

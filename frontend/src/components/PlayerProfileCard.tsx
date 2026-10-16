@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { AuctionPlayer } from '../lib/store';
 import { formatRupees } from '../lib/formatters';
 import { PlayerPortrait } from './PlayerPortrait';
@@ -8,7 +9,7 @@ interface PlayerProfileCardProps {
   auctionPlayer: AuctionPlayer | null;
 }
 
-export function PlayerProfileCard({ auctionPlayer }: PlayerProfileCardProps) {
+export const PlayerProfileCard = React.memo(function PlayerProfileCard({ auctionPlayer }: PlayerProfileCardProps) {
   if (!auctionPlayer) {
     return (
       <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 flex flex-col items-center justify-center min-h-[120px] text-center shadow-xl backdrop-blur-xl">
@@ -157,4 +158,4 @@ export function PlayerProfileCard({ auctionPlayer }: PlayerProfileCardProps) {
       </div>
     </div>
   );
-}
+});

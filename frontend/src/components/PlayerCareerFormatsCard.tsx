@@ -20,7 +20,7 @@ interface FormatStats {
   bbi: string;
 }
 
-export function PlayerCareerFormatsCard({ auctionPlayer }: PlayerCareerFormatsCardProps) {
+export const PlayerCareerFormatsCard = React.memo(function PlayerCareerFormatsCard({ auctionPlayer }: PlayerCareerFormatsCardProps) {
   const [selectedFormat, setSelectedFormat] = useState<'IPL' | 'T20' | 'ODI' | 'TEST'>('IPL');
 
   if (!auctionPlayer) {
@@ -250,4 +250,4 @@ export function PlayerCareerFormatsCard({ auctionPlayer }: PlayerCareerFormatsCa
       </div>
     </div>
   );
-}
+});

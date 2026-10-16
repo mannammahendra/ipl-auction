@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuctionStore, Team, RoomMember } from '../../../lib/store';
 import { api } from '../../../lib/api';
 import { socketService } from '../../../lib/socket';
+import { auctioneerVoice } from '../../../lib/voice';
+import { soundFx } from '../../../lib/audio';
 import { Navbar } from '../../../components/Navbar';
 import { formatRupees } from '../../../lib/formatters';
 import {
@@ -41,6 +43,17 @@ export default function LobbyPage() {
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+
+  const isNavigatingRef = useRef(false);
+
+  const navigateToArena = useCallback((targetRoomId: string) => {
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+    try {
+      auctioneerVoice.unlockAudio();
+    } catch {}
+    router.push(`/auction/${targetRoomId}`);
+  }, [router]);
 
   // Settings form state for host
   const [startingPurseCr, setStartingPurseCr] = useState<number>(120);
@@ -138,7 +151,7 @@ export default function LobbyPage() {
         });
 
         socket.on('auction_started', () => {
-          router.push(`/auction/${roomData.id || roomId}`);
+          navigateToArena(roomData.id || roomId);
         });
       } catch (err: any) {
         setError(err.message || 'Failed to load auction room');
@@ -155,7 +168,7 @@ export default function LobbyPage() {
       try {
         const latest = await api.rooms.get(roomId);
         if (latest.status === 'AUCTION_ACTIVE') {
-          router.push(`/auction/${latest.id || roomId}`);
+          navigateToArena(latest.id || roomId);
         } else {
           setRoom(latest);
         }
@@ -269,11 +282,20 @@ export default function LobbyPage() {
   };
 
   const handleStartAuction = async () => {
-    if (!room || startingAuction) return;
+    if (!room || startingAuction || isNavigatingRef.current) return;
     setStartingAuction(true);
     setError(null);
     try {
-      // 1. Ensure the latest settings selected in the lobby (timerSec, squadSize, etc.) are saved to room!
+      // 1. Immediately unlock audio with authentic host tap
+      try {
+        auctioneerVoice.unlockAudio();
+        soundFx.playGavel();
+      } catch {}
+
+      // 2. Prefetch arena route
+      router.prefetch(`/auction/${room.id}`);
+
+      // 3. Ensure the latest settings selected in the lobby (timerSec, squadSize, etc.) are saved to room!
       const squad = Number(targetSquadSize) || 11;
       const overseas = Math.min(Math.max(1, Number(overseasLimit) || 4), squad);
       const purse = (Number(startingPurseCr) || 120) * 10000000;
@@ -289,18 +311,16 @@ export default function LobbyPage() {
       });
       setRoom(updated);
 
-      // 2. Start auction using REST API with host Bearer token
+      // 4. Start auction using REST API with host Bearer token
       await api.auction.start(room.id);
 
-      // 3. Notify socket
-      socketService.startAuction(room.id);
-
-      // 4. Navigate to arena
-      router.push(`/auction/${room.id}`);
+      // 5. Navigate to arena instantly
+      navigateToArena(room.id);
     } catch (err: any) {
       console.error('Failed to start auction:', err);
       setError(err.message || 'Failed to start auction');
       setStartingAuction(false);
+      isNavigatingRef.current = false;
     }
   };
 
