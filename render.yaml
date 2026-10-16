@@ -21,13 +21,15 @@ services:
     runtime: node
     plan: free
     rootDir: frontend
-    buildCommand: npm install && npm run build
+    buildCommand: npm install --include=dev && npm run build
     startCommand: npm start
     envVars:
       - key: NODE_VERSION
         value: "22"
       - key: NODE_ENV
         value: production
+      - key: NODE_OPTIONS
+        value: "--max-old-space-size=460"
       - key: NEXT_PUBLIC_API_URL
         value: https://ipl-auction-backend-8t5h.onrender.com
       - key: NEXT_PUBLIC_SOCKET_URL

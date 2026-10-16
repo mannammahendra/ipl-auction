@@ -8,7 +8,7 @@ class WebViewScreen extends StatefulWidget {
 
   const WebViewScreen({
     super.key,
-    this.initialUrl = 'http://192.168.29.124:3000',
+    this.initialUrl = 'https://ipl-auction-app-2026.onrender.com',
   });
 
   @override
