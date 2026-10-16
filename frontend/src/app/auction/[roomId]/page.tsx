@@ -79,6 +79,7 @@ export default function LiveAuctionArenaPage() {
   const [copiedCode, setCopiedCode] = useState(false);
   const [bidAlert, setBidAlert] = useState<string | null>(null);
   const [hostAlert, setHostAlert] = useState<{ id: string; message: string; type?: string } | null>(null);
+  const lastAnnouncedPlayerIdRef = useRef<string | null>(null);
 
   const triggerHostAlert = (message: string, type?: string) => {
     setHostAlert({ id: String(Date.now()), message, type });
@@ -89,6 +90,7 @@ export default function LiveAuctionArenaPage() {
 
   useEffect(() => {
     setVoiceEnabled(auctioneerVoice.isEnabled());
+    auctioneerVoice.unlockAudio();
   }, []);
 
   const handleCopyCode = async () => {
@@ -129,9 +131,23 @@ export default function LiveAuctionArenaPage() {
 
         const roomData = await api.rooms.get(roomId);
         setRoom(roomData);
+        auctioneerVoice.unlockAudio();
+
         if (!useAuctionStore.getState().currentAuctionPlayer) {
           setTimer(roomData.bidTimerSeconds || 25);
         }
+
+        // Immediately vocalize current player if auction already in progress or newly started
+        if (roomData.status === 'AUCTION_ACTIVE' && roomData.currentAuctionPlayer?.player) {
+          const initP = roomData.currentAuctionPlayer.player;
+          if (initP && initP.id !== lastAnnouncedPlayerIdRef.current) {
+            lastAnnouncedPlayerIdRef.current = initP.id;
+            setTimeout(() => {
+              auctioneerVoice.announceNomination(initP.name, initP.role);
+            }, 300);
+          }
+        }
+
         setLoading(false); // Instant render - never leave user staring at a spinner
 
         const socket = socketService.connect(storedToken || '');
@@ -139,6 +155,11 @@ export default function LiveAuctionArenaPage() {
 
         socket.on('room_sync', (data: any) => {
           syncRoomState(data);
+          const cp = data.currentAuctionPlayer || data.room?.currentAuctionPlayer;
+          if (cp?.player && cp.id !== lastAnnouncedPlayerIdRef.current && (data.room?.status === 'AUCTION_ACTIVE' || roomData.status === 'AUCTION_ACTIVE')) {
+            lastAnnouncedPlayerIdRef.current = cp.id;
+            auctioneerVoice.announceNomination(cp.player.name, cp.player.role);
+          }
         });
 
         // 1. Timer countdown: Loud countdown for last 3 seconds (Three!, Two!, One!) scaled to timer speed
@@ -174,6 +195,7 @@ export default function LiveAuctionArenaPage() {
           auctioneerVoice.resetBiddingCadence();
           const p = data.auctionPlayer?.player;
           if (p) {
+            lastAnnouncedPlayerIdRef.current = data.auctionPlayer?.id || p.id;
             auctioneerVoice.announceNomination(p.name, p.role);
           }
         });

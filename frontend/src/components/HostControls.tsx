@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 
 export function HostControls() {
-  const { user, room, isTimerPaused, speedMultiplier, setSpeedMultiplier } = useAuctionStore();
+  const { user, room, isTimerPaused, speedMultiplier, setSpeedMultiplier, setTimer, chatOpen } = useAuctionStore();
   const [collapsed, setCollapsed] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -23,7 +23,8 @@ export function HostControls() {
       (room.hostId === user.id || room.members?.some((m) => m.userId === user.id && m.isHost))
   );
 
-  if (!isHost || !room) {
+  // When chat drawer is open on mobile/desktop, hide host console so it NEVER overlaps the message input bar
+  if (!isHost || !room || chatOpen) {
     return null;
   }
 
@@ -39,11 +40,15 @@ export function HostControls() {
 
   const handlePause = () => {
     showFeedback('Pausing Auction...');
+    // Optimistic pause for instantaneous mobile feedback
+    setTimer(useAuctionStore.getState().remainingTimer, true);
     socketService.pauseAuction(room.id);
   };
 
   const handleResume = () => {
     showFeedback('Resuming Auction...');
+    // Optimistic resume for instantaneous mobile feedback
+    setTimer(useAuctionStore.getState().remainingTimer, false);
     socketService.resumeAuction(room.id);
   };
 
@@ -125,14 +130,14 @@ export function HostControls() {
               </div>
             )}
 
-            {/* Buttons present below the host console text, strictly horizontal in a single row */}
-            <div className="flex flex-row flex-nowrap items-center justify-center gap-1.5 pt-1 shrink-0">
+            {/* Buttons present below the host console text, touch-optimized for mobile and desktop */}
+            <div className="flex flex-row items-center justify-center gap-1.5 pt-1 shrink-0 touch-manipulation">
               {room.status === 'LOBBY' ? (
                 <button
                   onClick={handleStart}
-                  className="flex items-center justify-center gap-1 px-2.5 py-0.5 rounded-md bg-emerald-600 hover:bg-emerald-500 font-bold text-xs text-white shadow-md transition-colors whitespace-nowrap"
+                  className="flex items-center justify-center gap-1.5 px-3 py-1.5 min-h-[34px] rounded-lg bg-emerald-600 hover:bg-emerald-500 font-bold text-xs text-white shadow-md transition-all active:scale-95 whitespace-nowrap touch-manipulation"
                 >
-                  <Play className="w-3 h-3" />
+                  <Play className="w-3.5 h-3.5" />
                   <span>Start Auction</span>
                 </button>
               ) : (
@@ -140,14 +145,14 @@ export function HostControls() {
                   {isTimerPaused || room.isPaused ? (
                     <button
                       onClick={handleResume}
-                      className="px-2 py-0.5 rounded-md bg-emerald-600 hover:bg-emerald-500 font-bold text-xs transition-colors whitespace-nowrap"
+                      className="px-3 py-1.5 min-h-[34px] rounded-lg bg-emerald-600 hover:bg-emerald-500 font-bold text-xs text-white transition-all active:scale-95 whitespace-nowrap touch-manipulation shadow-sm"
                     >
                       Resume
                     </button>
                   ) : (
                     <button
                       onClick={handlePause}
-                      className="px-2 py-0.5 rounded-md bg-amber-600 hover:bg-amber-500 font-bold text-xs transition-colors whitespace-nowrap"
+                      className="px-3 py-1.5 min-h-[34px] rounded-lg bg-amber-600 hover:bg-amber-500 font-bold text-xs text-white transition-all active:scale-95 whitespace-nowrap touch-manipulation shadow-sm"
                     >
                       Pause
                     </button>
@@ -155,7 +160,7 @@ export function HostControls() {
 
                   <button
                     onClick={handleSkip}
-                    className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 border border-slate-700 font-bold text-xs transition-colors whitespace-nowrap"
+                    className="px-2.5 py-1.5 min-h-[34px] rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 font-bold text-xs text-slate-200 transition-all active:scale-95 whitespace-nowrap touch-manipulation"
                   >
                     Skip
                   </button>
@@ -163,7 +168,7 @@ export function HostControls() {
                   <button
                     onClick={handleUndo}
                     title="Undo last hammer strike and refund purse"
-                    className="px-2 py-0.5 rounded-md bg-indigo-950 hover:bg-indigo-900 border border-indigo-700/60 font-bold text-xs text-indigo-300 transition-colors whitespace-nowrap"
+                    className="px-2.5 py-1.5 min-h-[34px] rounded-lg bg-indigo-950 hover:bg-indigo-900 border border-indigo-700/60 font-bold text-xs text-indigo-300 transition-all active:scale-95 whitespace-nowrap touch-manipulation"
                   >
                     Undo
                   </button>
@@ -171,13 +176,13 @@ export function HostControls() {
                   <button
                     onClick={handleBlitzClick}
                     title={`Blitz Speed: Currently ${speedMultiplier || 1}x. Click to change speed (1.25x -> 1.5x -> 2x -> 1x)`}
-                    className={`flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-xs transition-all whitespace-nowrap ${
+                    className={`flex items-center gap-1 px-2.5 py-1.5 min-h-[34px] rounded-lg font-bold text-xs transition-all active:scale-95 whitespace-nowrap touch-manipulation ${
                       (speedMultiplier || 1) > 1
                         ? 'bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/30 ring-1 ring-amber-300'
                         : 'bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300'
                     }`}
                   >
-                    <Zap className={`w-3 h-3 ${(speedMultiplier || 1) > 1 ? 'text-slate-950 fill-slate-950' : 'text-amber-400'}`} />
+                    <Zap className={`w-3.5 h-3.5 ${(speedMultiplier || 1) > 1 ? 'text-slate-950 fill-slate-950' : 'text-amber-400'}`} />
                     <span>Blitz{(speedMultiplier && speedMultiplier > 1) ? ` ${speedMultiplier}x` : ''}</span>
                   </button>
 
@@ -185,7 +190,7 @@ export function HostControls() {
                     onClick={handleEndAuction}
                     disabled={isEnding}
                     title="Stop the entire auction and lock all squads"
-                    className="px-2 py-0.5 rounded-md bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 font-bold text-xs text-white shadow-sm transition-all hover:scale-105 active:scale-95 whitespace-nowrap disabled:opacity-50"
+                    className="px-3 py-1.5 min-h-[34px] rounded-lg bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 font-bold text-xs text-white shadow-sm transition-all active:scale-95 whitespace-nowrap disabled:opacity-50 touch-manipulation"
                   >
                     {isEnding ? 'Ending...' : 'End'}
                   </button>

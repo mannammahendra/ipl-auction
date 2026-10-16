@@ -61,7 +61,7 @@ export const RoomChatDrawer: React.FC<RoomChatDrawerProps> = ({ roomId }) => {
   const myTeam = room?.teams?.find((t) => t.id === myMember?.teamId);
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100] flex justify-end bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
       {/* Background click to dismiss */}
       <div className="flex-1" onClick={() => setChatOpen(false)} />
 

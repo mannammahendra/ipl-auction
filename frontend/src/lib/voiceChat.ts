@@ -19,6 +19,7 @@ class VoiceChatManager {
   private roomId: string | null = null;
   private isSpeaking = false;
   private silenceTimer: any = null;
+  private candidateQueue = new Map<string, any[]>();
 
   async startVoice(roomId: string): Promise<boolean> {
     if (typeof window === 'undefined') return false;
@@ -41,6 +42,17 @@ class VoiceChatManager {
       // Default to unmuted when explicitly turning on mic
       this.localStream.getAudioTracks().forEach((track) => {
         track.enabled = true;
+      });
+
+      // Ensure local tracks are immediately attached to all active peer connections
+      this.peerConnections.forEach((pc) => {
+        this.localStream!.getTracks().forEach((track) => {
+          const senders = pc.getSenders();
+          const alreadyAdded = senders.some((s) => s.track?.id === track.id);
+          if (!alreadyAdded) {
+            pc.addTrack(track, this.localStream!);
+          }
+        });
       });
 
       useAuctionStore.getState().setVoiceConnected(true);
@@ -105,6 +117,7 @@ class VoiceChatManager {
       el.remove();
     });
     this.audioElements.clear();
+    this.candidateQueue.clear();
 
     if (this.roomId) {
       socketService.leaveVoice(this.roomId);
@@ -135,6 +148,7 @@ class VoiceChatManager {
 
   // Handle when a peer leaves
   handleUserLeft(socketId: string) {
+    this.candidateQueue.delete(socketId);
     if (this.peerConnections.has(socketId)) {
       this.peerConnections.get(socketId)?.close();
       this.peerConnections.delete(socketId);
@@ -157,13 +171,34 @@ class VoiceChatManager {
     try {
       if (signal.type === 'offer') {
         await pc.setRemoteDescription(new RTCSessionDescription(signal));
+        // Process any queued ICE candidates for this peer
+        const queued = this.candidateQueue.get(fromSocketId) || [];
+        for (const cand of queued) {
+          await pc.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
+        }
+        this.candidateQueue.delete(fromSocketId);
+
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         socketService.sendVoiceSignal(fromSocketId, answer);
       } else if (signal.type === 'answer') {
         await pc.setRemoteDescription(new RTCSessionDescription(signal));
+        // Process any queued ICE candidates
+        const queued = this.candidateQueue.get(fromSocketId) || [];
+        for (const cand of queued) {
+          await pc.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
+        }
+        this.candidateQueue.delete(fromSocketId);
       } else if (signal.candidate) {
-        await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+        if (pc.remoteDescription && pc.remoteDescription.type) {
+          await pc.addIceCandidate(new RTCIceCandidate(signal.candidate)).catch(() => {});
+        } else {
+          // Buffer candidate until remote description is set
+          if (!this.candidateQueue.has(fromSocketId)) {
+            this.candidateQueue.set(fromSocketId, []);
+          }
+          this.candidateQueue.get(fromSocketId)!.push(signal.candidate);
+        }
       }
     } catch (e) {
       console.warn('WebRTC signal error with peer:', fromSocketId, e);
@@ -189,11 +224,24 @@ class VoiceChatManager {
       if (!audio) {
         audio = new Audio();
         audio.autoplay = true;
+        (audio as any).playsInline = true;
         audio.volume = 1.0;
         this.audioElements.set(remoteSocketId, audio);
       }
       audio.srcObject = event.streams[0];
-      audio.play().catch(() => {});
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          console.warn('Voice chat audio autoplay restricted, awaiting user touch:', err);
+          const resumeAudio = () => {
+            audio?.play().catch(() => {});
+            window.removeEventListener('click', resumeAudio);
+            window.removeEventListener('touchstart', resumeAudio);
+          };
+          window.addEventListener('click', resumeAudio, { once: true });
+          window.addEventListener('touchstart', resumeAudio, { once: true });
+        });
+      }
     };
 
     if (isInitiator) {

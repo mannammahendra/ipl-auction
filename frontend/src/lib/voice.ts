@@ -63,7 +63,31 @@ class AuctioneerVoiceService {
           this.initVoices();
         };
       }
+
+      // Proactively unlock speech synthesis on very first touch or click
+      const autoUnlock = () => {
+        this.unlockAudio();
+        window.removeEventListener('click', autoUnlock);
+        window.removeEventListener('touchstart', autoUnlock);
+        window.removeEventListener('pointerdown', autoUnlock);
+      };
+      window.addEventListener('click', autoUnlock, { once: true });
+      window.addEventListener('touchstart', autoUnlock, { once: true });
+      window.addEventListener('pointerdown', autoUnlock, { once: true });
     }
+  }
+
+  public unlockAudio() {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    try {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+      this.initVoices();
+      const warmup = new SpeechSynthesisUtterance('');
+      warmup.volume = 0;
+      window.speechSynthesis.speak(warmup);
+    } catch (e) {}
   }
 
   public initVoices() {
