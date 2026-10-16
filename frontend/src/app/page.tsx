@@ -127,13 +127,6 @@ function LandingContent() {
       });
 
       router.push(`/lobby/${room.id}`);
-      if (typeof window !== 'undefined') {
-        setTimeout(() => {
-          if (window.location.pathname !== `/lobby/${room.id}`) {
-            window.location.href = `/lobby/${room.id}`;
-          }
-        }, 500);
-      }
     } catch (err: any) {
       setErrorMessage(err.message || 'Failed to create auction room. Please check your connection.');
       setIsLoading(false);
@@ -161,13 +154,6 @@ function LandingContent() {
       });
 
       router.push(`/lobby/${room.id}`);
-      if (typeof window !== 'undefined') {
-        setTimeout(() => {
-          if (window.location.pathname !== `/lobby/${room.id}`) {
-            window.location.href = `/lobby/${room.id}`;
-          }
-        }, 500);
-      }
     } catch (err: any) {
       setErrorMessage(err.message || 'Failed to launch demo');
       setIsLoading(false);

@@ -33,6 +33,7 @@ export default function LobbyPage() {
   const roomId = params?.roomId as string;
 
   const { user, room, setRoom, setUser } = useAuctionStore();
+  const [isMounted, setIsMounted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rulesApplied, setRulesApplied] = useState(false);
@@ -54,6 +55,10 @@ export default function LobbyPage() {
   const [claimingTeam, setClaimingTeam] = useState<boolean>(false);
   const [startingAuction, setStartingAuction] = useState<boolean>(false);
   const [roomAlert, setRoomAlert] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     async function init() {
@@ -134,13 +139,6 @@ export default function LobbyPage() {
 
         socket.on('auction_started', () => {
           router.push(`/auction/${roomData.id || roomId}`);
-          if (typeof window !== 'undefined') {
-            setTimeout(() => {
-              if (window.location.pathname !== `/auction/${roomData.id || roomId}`) {
-                window.location.href = `/auction/${roomData.id || roomId}`;
-              }
-            }, 500);
-          }
         });
       } catch (err: any) {
         setError(err.message || 'Failed to load auction room');
@@ -158,13 +156,6 @@ export default function LobbyPage() {
         const latest = await api.rooms.get(roomId);
         if (latest.status === 'AUCTION_ACTIVE') {
           router.push(`/auction/${latest.id || roomId}`);
-          if (typeof window !== 'undefined') {
-            setTimeout(() => {
-              if (window.location.pathname !== `/auction/${latest.id || roomId}`) {
-                window.location.href = `/auction/${latest.id || roomId}`;
-              }
-            }, 500);
-          }
         } else {
           setRoom(latest);
         }
@@ -306,13 +297,6 @@ export default function LobbyPage() {
 
       // 4. Navigate to arena
       router.push(`/auction/${room.id}`);
-      if (typeof window !== 'undefined') {
-        setTimeout(() => {
-          if (window.location.pathname !== `/auction/${room.id}`) {
-            window.location.href = `/auction/${room.id}`;
-          }
-        }, 500);
-      }
     } catch (err: any) {
       console.error('Failed to start auction:', err);
       setError(err.message || 'Failed to start auction');
@@ -967,9 +951,9 @@ export default function LobbyPage() {
                   <span>{copiedLink ? 'Invite Link Copied!' : 'Copy Direct Join Link'}</span>
                 </button>
 
-                {typeof window !== 'undefined' && (
+                {isMounted && (
                   <a
-                    href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`🏏 Join my IPL Mega Auction Room: ${room.name}!\nRoom Code: ${room.code}\nJoin link: ${window.location.origin}/?join=${room.code}`)}`}
+                    href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`🏏 Join my IPL Mega Auction Room: ${room.name}!\nRoom Code: ${room.code}\nJoin link: ${typeof window !== 'undefined' ? window.location.origin : ''}/?join=${room.code}`)}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95"

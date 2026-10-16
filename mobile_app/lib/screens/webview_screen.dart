@@ -8,7 +8,7 @@ class WebViewScreen extends StatefulWidget {
 
   const WebViewScreen({
     super.key,
-    this.initialUrl = 'https://ipl-auction-app-2026.onrender.com',
+    this.initialUrl = 'https://ipl-auction-frontend-sj8t.onrender.com',
   });
 
   @override
@@ -81,6 +81,11 @@ class _WebViewScreenState extends State<WebViewScreen> {
     if (controller.platform is AndroidWebViewController) {
       final androidController = controller.platform as AndroidWebViewController;
       androidController.setMediaPlaybackRequiresUserGesture(false);
+      androidController.setOnPlatformPermissionRequest(
+        (PlatformWebViewPermissionRequest request) {
+          request.grant();
+        },
+      );
     }
 
     controller.loadRequest(Uri.parse(_currentUrl));
