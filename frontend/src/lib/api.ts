@@ -7,7 +7,7 @@ function getBaseUrl(): string {
     // This avoids cross-origin blocking, separate port firewall issues, and connection hangs on mobile!
     return '';
   }
-  return process.env.INTERNAL_API_URL || 'http://localhost:4000';
+  return process.env.INTERNAL_API_URL || 'https://ipl-auction-backend-8t5h.onrender.com';
 }
 
 class ApiClient {

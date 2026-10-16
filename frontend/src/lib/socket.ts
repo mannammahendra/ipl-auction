@@ -5,11 +5,14 @@ function getSocketUrl(): string {
     return process.env.NEXT_PUBLIC_SOCKET_URL;
   }
   if (typeof window !== 'undefined') {
+    if (window.location.hostname.includes('onrender.com')) {
+      return 'https://ipl-auction-backend-8t5h.onrender.com';
+    }
     const host = window.location.hostname;
     const protocol = window.location.protocol;
     return `${protocol}//${host}:4000`;
   }
-  return 'http://localhost:4000';
+  return 'https://ipl-auction-backend-8t5h.onrender.com';
 }
 
 class SocketService {
