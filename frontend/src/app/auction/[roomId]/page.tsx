@@ -185,16 +185,24 @@ export default function LiveAuctionArenaPage() {
           }
         };
 
-        // 1. Timer countdown: Loud countdown for last 3 seconds (Three!, Two!, One!) scaled to timer speed
+        // 1. Timer countdown: Loud countdown for last 5 to 0 seconds (5, 4, 3, 2, 1, 0) synchronized with Blitz speed
         socket.on('timer_tick', (data: { remainingSeconds: number; speedMultiplier?: number }) => {
           setTimer(data.remainingSeconds);
           if (data.speedMultiplier) {
             useAuctionStore.getState().setSpeedMultiplier(data.speedMultiplier);
           }
           auctioneerVoice.onTimerTick(data.remainingSeconds, data.speedMultiplier);
-          if (data.remainingSeconds <= 3 && data.remainingSeconds >= 1) {
+
+          const currentRoom = useAuctionStore.getState().room;
+          const currentAP = useAuctionStore.getState().currentAuctionPlayer;
+          const isAuctionActive = (currentRoom?.status === 'AUCTION_ACTIVE' || !currentRoom?.status) && !currentRoom?.isPaused;
+          const isPlayerNominated = currentAP?.status === 'NOMINATED';
+
+          if (isAuctionActive && isPlayerNominated && data.remainingSeconds <= 5 && data.remainingSeconds >= 0) {
             const currentSpeed = data.speedMultiplier || useAuctionStore.getState().speedMultiplier || 1.0;
-            auctioneerVoice.announceCountdown(data.remainingSeconds, currentSpeed);
+            auctioneerVoice.announceCountdown(data.remainingSeconds, currentSpeed, currentAP?.id);
+          } else if (data.remainingSeconds > 5 || !isAuctionActive || !isPlayerNominated) {
+            auctioneerVoice.stopCountdown();
           }
 
           if (data.remainingSeconds === 0) {
@@ -223,7 +231,8 @@ export default function LiveAuctionArenaPage() {
             'Bidder';
           const bidAmount = Number(data.amount || data.bidAmount || data.bid?.amount || 0);
           const currentSpeed = useAuctionStore.getState().speedMultiplier || 1.0;
-          auctioneerVoice.announceBid(teamShort, bidAmount, currentSpeed);
+          const activePlayerId = useAuctionStore.getState().currentAuctionPlayer?.id;
+          auctioneerVoice.announceBid(teamShort, bidAmount, currentSpeed, activePlayerId);
         });
 
         // 3. Player nominated: ONLY player name & type (e.g. "Virat Kohli, Batsman")
@@ -244,6 +253,7 @@ export default function LiveAuctionArenaPage() {
         socket.on('player_sold', (data: any) => {
           clearZeroFallback();
           onPlayerSold(data);
+          auctioneerVoice.stopCountdown();
           const soldId = data.auctionPlayer?.id || data.auctionPlayer?.player?.id;
           if (soldId) {
             lastAnnouncedPlayerIdRef.current = soldId;
@@ -259,6 +269,7 @@ export default function LiveAuctionArenaPage() {
         socket.on('player_unsold', (data: any) => {
           clearZeroFallback();
           onPlayerUnsold(data);
+          auctioneerVoice.stopCountdown();
           const unsoldId = data.auctionPlayer?.id || data.auctionPlayer?.player?.id;
           if (unsoldId) {
             lastAnnouncedPlayerIdRef.current = unsoldId;
@@ -266,6 +277,7 @@ export default function LiveAuctionArenaPage() {
         });
 
         socket.on('auction_paused', (data: any) => {
+          auctioneerVoice.stop();
           const currentRoom = useAuctionStore.getState().room;
           if (currentRoom) {
             useAuctionStore.getState().setRoom({ ...currentRoom, isPaused: true });
@@ -284,10 +296,12 @@ export default function LiveAuctionArenaPage() {
         });
 
         socket.on('player_skipped', (data: any) => {
+          auctioneerVoice.stop();
           triggerHostAlert(data?.message || `⏭️ Host skipped ${data?.playerName || 'player'}`, 'skip');
         });
 
         socket.on('action_undone', (data: any) => {
+          auctioneerVoice.stop();
           if (data?.teams) {
             const currentRoom = useAuctionStore.getState().room;
             if (currentRoom) {
@@ -303,11 +317,13 @@ export default function LiveAuctionArenaPage() {
         socket.on('auction_speed_changed', (data: any) => {
           if (data?.speedMultiplier) {
             useAuctionStore.getState().setSpeedMultiplier(data.speedMultiplier);
+            auctioneerVoice.setTimerSpeed(data.speedMultiplier);
           }
           triggerHostAlert(data?.message || `⚡ Auction speed changed to ${data?.speedMultiplier}x Blitz!`, 'blitz');
         });
 
         socket.on('auction_ended', (data: any) => {
+          auctioneerVoice.stop();
           if (data?.room) {
             setRoom(data.room);
           }
@@ -315,6 +331,7 @@ export default function LiveAuctionArenaPage() {
         });
 
         socket.on('auction_completed', (data: any) => {
+          auctioneerVoice.stop();
           if (data?.room) {
             setRoom(data.room);
           }
