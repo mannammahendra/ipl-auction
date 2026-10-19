@@ -319,6 +319,35 @@ export class RoomsService {
       }
     }
 
+    if (room.status === 'LOBBY') {
+      const totalGlobalPlayers = await this.prisma.player.count();
+      if (room.auctionPlayers.length < totalGlobalPlayers) {
+        const existingPlayerIds = new Set(room.auctionPlayers.map((ap) => ap.playerId));
+        const missingPlayers = await this.prisma.player.findMany({
+          where: { id: { notIn: Array.from(existingPlayerIds) } },
+        });
+        if (missingPlayers.length > 0) {
+          const highestLot = room.auctionPlayers.reduce((max, ap) => Math.max(max, ap.lotNumber), 0);
+          await this.prisma.auctionPlayer.createMany({
+            data: missingPlayers.map((p, idx) => ({
+              id: randomUUID(),
+              roomId: room.id,
+              playerId: p.id,
+              status: 'UPCOMING',
+              lotNumber: highestLot + idx + 1,
+              round: 1,
+            })),
+          });
+          const reloadedPlayers = await this.prisma.auctionPlayer.findMany({
+            where: { roomId: room.id },
+            include: { player: true },
+            orderBy: { lotNumber: 'asc' },
+          });
+          room.auctionPlayers = reloadedPlayers;
+        }
+      }
+    }
+
     const currentAuctionPlayer = room.currentAuctionPlayerId
       ? room.auctionPlayers.find((ap) => ap.id === room.currentAuctionPlayerId) || null
       : room.auctionPlayers.find((ap) => ap.status === 'NOMINATED') || null;
