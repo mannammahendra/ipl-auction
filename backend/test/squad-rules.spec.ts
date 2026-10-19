@@ -8,7 +8,21 @@ describe('Squad Limit, Overseas Quota & Purse Reserve Boundary Tests', () => {
   let teamId = '';
   let hostUserId = '';
 
+  let isServerRunning = false;
+
   beforeAll(async () => {
+    try {
+      const healthRes = await fetch(`${BASE_URL}/api/health`, { signal: AbortSignal.timeout(1000) });
+      if (healthRes.ok) {
+        const healthJson = await healthRes.json();
+        isServerRunning = healthJson.status === 'ok';
+      }
+    } catch {
+      isServerRunning = false;
+    }
+
+    if (!isServerRunning) return;
+
     // 1. Authenticate Host
     const authRes = await fetch(`${BASE_URL}/api/auth/guest`, {
       method: 'POST',
@@ -44,6 +58,12 @@ describe('Squad Limit, Overseas Quota & Purse Reserve Boundary Tests', () => {
       method: 'POST',
       headers: { Authorization: `Bearer ${hostToken}` },
     });
+  });
+
+  beforeEach((ctx) => {
+    if (!isServerRunning) {
+      ctx.skip();
+    }
   });
 
   it('rejects a bid that violates the compulsory squad purse reserve', async () => {

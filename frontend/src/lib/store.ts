@@ -273,10 +273,22 @@ export const useAuctionStore = create<AuctionStore>((set) => ({
   },
 
   setRoom: (room) =>
-    set((state) => ({
-      room,
-      remainingTimer: state.currentAuctionPlayer ? state.remainingTimer : (room?.bidTimerSeconds || 25),
-    })),
+    set((state) => {
+      let resolvedPlayer = state.currentAuctionPlayer;
+      if (!resolvedPlayer && room) {
+        if ((room as any).currentAuctionPlayer) {
+          resolvedPlayer = (room as any).currentAuctionPlayer;
+        } else if (room.currentAuctionPlayerId && room.auctionPlayers) {
+          const match = room.auctionPlayers.find((ap) => ap.id === room.currentAuctionPlayerId);
+          if (match) resolvedPlayer = match;
+        }
+      }
+      return {
+        room,
+        currentAuctionPlayer: resolvedPlayer,
+        remainingTimer: resolvedPlayer ? state.remainingTimer : (room?.bidTimerSeconds || 25),
+      };
+    }),
 
   setTimer: (remainingTimer, isTimerPaused) =>
     set((state) => ({
@@ -329,21 +341,38 @@ export const useAuctionStore = create<AuctionStore>((set) => ({
   syncRoomState: ({ room, currentAuctionPlayer, currentBids, timerState, recentMessages, voiceParticipants }) => {
     const currentTeam = room.teams?.find((t) => t.id === room.currentBidTeamId) || null;
     const latestBidder = currentBids && currentBids.length > 0 ? currentBids[0].bidder?.username : null;
-    set((state) => ({
-      room,
-      currentAuctionPlayer: currentAuctionPlayer || null,
-      currentBidAmount: room.currentBidAmount || 0,
-      currentBidTeamId: room.currentBidTeamId || null,
-      currentBidTeam: currentTeam,
-      currentBidderName: latestBidder,
-      currentBids: currentBids || [],
-      remainingTimer: timerState ? timerState.remainingSeconds : (room.bidTimerSeconds || 25),
-      isTimerPaused: timerState ? timerState.isPaused : room.isPaused,
-      speedMultiplier: timerState?.speedMultiplier || state.speedMultiplier || 1.0,
-      messages: recentMessages !== undefined ? recentMessages : state.messages,
-      voiceParticipants: voiceParticipants !== undefined ? voiceParticipants : state.voiceParticipants,
-      isAccelerated: (room.currentRound || 1) >= 2 || (room.bidTimerSeconds || 25) <= 15,
-    }));
+    set((state) => {
+      let resolvedPlayer = currentAuctionPlayer;
+      if (resolvedPlayer === undefined) {
+        if ((room as any).currentAuctionPlayer) {
+          resolvedPlayer = (room as any).currentAuctionPlayer;
+        } else if (room.currentAuctionPlayerId && room.auctionPlayers) {
+          resolvedPlayer = room.auctionPlayers.find((ap) => ap.id === room.currentAuctionPlayerId) || null;
+        } else if (state.currentAuctionPlayer && state.currentAuctionPlayer.id === room.currentAuctionPlayerId) {
+          resolvedPlayer = state.currentAuctionPlayer;
+        } else if (!room.currentAuctionPlayerId) {
+          resolvedPlayer = null;
+        } else {
+          resolvedPlayer = state.currentAuctionPlayer;
+        }
+      }
+
+      return {
+        room,
+        currentAuctionPlayer: resolvedPlayer || null,
+        currentBidAmount: room.currentBidAmount || 0,
+        currentBidTeamId: room.currentBidTeamId || null,
+        currentBidTeam: currentTeam,
+        currentBidderName: latestBidder !== undefined ? latestBidder : state.currentBidderName,
+        currentBids: currentBids !== undefined ? currentBids : state.currentBids,
+        remainingTimer: timerState ? timerState.remainingSeconds : (room.bidTimerSeconds || 25),
+        isTimerPaused: timerState ? timerState.isPaused : room.isPaused,
+        speedMultiplier: timerState?.speedMultiplier || state.speedMultiplier || 1.0,
+        messages: recentMessages !== undefined ? recentMessages : state.messages,
+        voiceParticipants: voiceParticipants !== undefined ? voiceParticipants : state.voiceParticipants,
+        isAccelerated: (room.currentRound || 1) >= 2 || (room.bidTimerSeconds || 25) <= 15,
+      };
+    });
   },
 
   onBidPlaced: ({ bid, team, amount, timerSeconds }) => {
@@ -372,11 +401,25 @@ export const useAuctionStore = create<AuctionStore>((set) => ({
             ap.id === auctionPlayer.id ? { ...ap, status: 'NOMINATED' as const } : ap,
           )
         : [];
-      const updatedRoom = state.room ? { ...state.room, auctionPlayers: updatedAuctionPlayers } : null;
+      const updatedRoom = state.room
+        ? {
+            ...state.room,
+            status: 'AUCTION_ACTIVE' as const,
+            currentAuctionPlayerId: auctionPlayer.id,
+            currentBidAmount: 0,
+            currentBidTeamId: null,
+            auctionPlayers: updatedAuctionPlayers,
+          }
+        : null;
+
+      const nominatedAP: AuctionPlayer = {
+        ...auctionPlayer,
+        status: 'NOMINATED',
+      };
 
       return {
         room: updatedRoom,
-        currentAuctionPlayer: auctionPlayer,
+        currentAuctionPlayer: nominatedAP,
         currentBidAmount: 0,
         currentBidTeamId: null,
         currentBidTeam: null,

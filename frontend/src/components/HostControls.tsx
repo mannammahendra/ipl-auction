@@ -46,6 +46,11 @@ export const HostControls = React.memo(function HostControls() {
     socketService.startAuction(room.id);
   };
 
+  const handleNominateNext = () => {
+    showFeedback('Nominated Next Player...');
+    socketService.nominateNextPlayer(room.id);
+  };
+
   const handlePause = () => {
     showFeedback('Pausing Auction...');
     // Optimistic pause for instantaneous mobile feedback
@@ -150,6 +155,17 @@ export const HostControls = React.memo(function HostControls() {
                 </button>
               ) : (
                 <>
+                  {!currentAuctionPlayer && room.status === 'AUCTION_ACTIVE' && (
+                    <button
+                      onClick={handleNominateNext}
+                      className="flex items-center gap-1 px-3 py-1.5 min-h-[34px] rounded-lg bg-emerald-600 hover:bg-emerald-500 font-bold text-xs text-white shadow-sm transition-all active:scale-95 whitespace-nowrap touch-manipulation"
+                      title="Nominate next player from the upcoming pool"
+                    >
+                      <Play className="w-3.5 h-3.5" />
+                      <span>Nominate Next</span>
+                    </button>
+                  )}
+
                   {isTimerPaused || room.isPaused ? (
                     <button
                       onClick={handleResume}

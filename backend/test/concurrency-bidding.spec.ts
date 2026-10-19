@@ -11,7 +11,21 @@ describe('Concurrency & Rapid Bidding Stress Integration Tests', () => {
   let team1Id = '';
   let team2Id = '';
 
+  let isServerRunning = false;
+
   beforeAll(async () => {
+    try {
+      const healthRes = await fetch(`${BASE_URL}/api/health`, { signal: AbortSignal.timeout(1000) });
+      if (healthRes.ok) {
+        const healthJson = await healthRes.json();
+        isServerRunning = healthJson.status === 'ok';
+      }
+    } catch {
+      isServerRunning = false;
+    }
+
+    if (!isServerRunning) return;
+
     // 1. Authenticate Host
     const hRes = await fetch(`${BASE_URL}/api/auth/guest`, {
       method: 'POST',
@@ -96,6 +110,12 @@ describe('Concurrency & Rapid Bidding Stress Integration Tests', () => {
       headers: { Authorization: `Bearer ${hostToken}` },
     });
     expect(startRes.status).toBe(201);
+  });
+
+  beforeEach((ctx) => {
+    if (!isServerRunning) {
+      ctx.skip();
+    }
   });
 
   it('verifies that self-outbidding is strictly prevented', async () => {

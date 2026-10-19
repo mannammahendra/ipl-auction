@@ -500,14 +500,28 @@ export function AuctionPoolRecordsModal({
                       {/* Price Display */}
                       <div className="text-right min-w-[80px]">
                         {activeTab === 'UPCOMING' && (
-                          <>
+                          <div className="flex flex-col items-end gap-1">
                             <span className="text-[10px] text-slate-500 block uppercase font-bold">
                               Base Price
                             </span>
                             <span className="text-sm font-black text-amber-300 font-mono">
                               {formatRupees(p.basePrice)}
                             </span>
-                          </>
+                            {isHost && !isCurrent && room?.status === 'AUCTION_ACTIVE' && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  socketService.nominatePlayer(room.id, ap.id);
+                                  onClose();
+                                }}
+                                className="px-2 py-0.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[10px] tracking-wider transition-all active:scale-95 shadow flex items-center gap-1 shrink-0"
+                                title="Nominate this player to the auction podium"
+                              >
+                                <Sparkles className="w-2.5 h-2.5" />
+                                <span>Nominate</span>
+                              </button>
+                            )}
+                          </div>
                         )}
 
                         {(activeTab === 'SOLD' || activeTab === 'HIGHEST_BID') && (

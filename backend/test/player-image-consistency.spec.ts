@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { getPlayerPhoto, resolvePlayerPhoto, PLAYER_PHOTOS } from '../../frontend/src/lib/playerPhotos';
-import { INITIAL_PLAYERS } from '../prisma/seed';
+import { INITIAL_PLAYERS } from '../src/players/initial-players.data.js';
 
 describe('Player Image Consistency & Identity Preservation Tests', () => {
   describe('Marquee Player Photo Resolution (RCB & MI)', () => {

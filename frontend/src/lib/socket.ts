@@ -98,6 +98,12 @@ class SocketService {
     }
   }
 
+  nominateNextPlayer(roomId: string) {
+    if (this.socket) {
+      this.socket.emit('nominate_next', { roomId });
+    }
+  }
+
   pauseAuction(roomId: string) {
     if (this.socket) {
       this.socket.emit('pause_auction', { roomId });

@@ -1,5 +1,6 @@
 import { Injectable, Logger, BadRequestException, ForbiddenException, NotFoundException, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { calculateNextValidBid as calcNextBid } from '../constants/auctionRules.js';
 
@@ -362,9 +363,33 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
     return await this.withLock(roomId, async () => {
       const room = await this.verifyHost(roomId, hostUserId);
 
-      // If auction is already running, avoid restarting or double nomination
+      // If auction is already running, resume next player if podium is empty
       if (room.status === 'AUCTION_ACTIVE') {
+        if (!room.currentAuctionPlayerId) {
+          await this.nominateNextUpcomingPlayerInternal(room.id);
+        }
         return { success: true, message: 'Auction is already active' };
+      }
+
+      // Check if room has auctionPlayers; if empty, copy from global Player catalog
+      const totalAuctionPlayers = await this.prisma.auctionPlayer.count({
+        where: { roomId: room.id },
+      });
+      if (totalAuctionPlayers === 0) {
+        const globalPlayers = await this.prisma.player.findMany({
+          orderBy: { basePrice: 'desc' },
+        });
+        if (globalPlayers.length > 0) {
+          await this.prisma.auctionPlayer.createMany({
+            data: globalPlayers.map((p, idx) => ({
+              roomId: room.id,
+              playerId: p.id,
+              status: 'UPCOMING',
+              lotNumber: idx + 1,
+              round: 1,
+            })),
+          });
+        }
       }
 
       await this.prisma.room.update({
@@ -385,6 +410,8 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
 
       if (firstPlayer) {
         await this.nominatePlayerInternal(room.id, firstPlayer.id);
+      } else {
+        await this.nominateNextUpcomingPlayerInternal(room.id);
       }
 
       return { success: true };
@@ -402,20 +429,16 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
     this.clearTimer(roomId);
 
     const room = await this.prisma.room.findUnique({ where: { id: roomId } });
-    const auctionPlayer = await this.prisma.auctionPlayer.findUnique({
-      where: { id: auctionPlayerId },
-      include: { player: true },
-    });
-
-    if (!room || !auctionPlayer) throw new BadRequestException('Invalid room or player');
+    if (!room) throw new BadRequestException('Invalid room');
     if (room.isPaused) throw new BadRequestException('Cannot nominate a player while the auction is paused');
 
-    await this.prisma.auctionPlayer.update({
+    const updatedAuctionPlayer = await this.prisma.auctionPlayer.update({
       where: { id: auctionPlayerId },
       data: {
         status: 'NOMINATED',
         nominatedAt: new Date(),
       },
+      include: { player: true },
     });
 
     const timerEndsAt = new Date(Date.now() + room.bidTimerSeconds * 1000);
@@ -423,7 +446,8 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
     await this.prisma.room.update({
       where: { id: roomId },
       data: {
-        currentAuctionPlayerId: auctionPlayer.id,
+        status: 'AUCTION_ACTIVE',
+        currentAuctionPlayerId: updatedAuctionPlayer.id,
         currentBidAmount: 0,
         currentBidTeamId: null,
         timerEndsAt,
@@ -436,16 +460,16 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
         roomId,
         action: 'PLAYER_NOMINATED',
         details: JSON.stringify({
-          playerId: auctionPlayer.playerId,
-          playerName: auctionPlayer.player.name,
-          basePrice: auctionPlayer.player.basePrice,
-          role: auctionPlayer.player.role,
+          playerId: updatedAuctionPlayer.playerId,
+          playerName: updatedAuctionPlayer.player.name,
+          basePrice: updatedAuctionPlayer.player.basePrice,
+          role: updatedAuctionPlayer.player.role,
         }),
       },
     });
 
     const payload = {
-      auctionPlayer,
+      auctionPlayer: updatedAuctionPlayer,
       currentBidAmount: 0,
       currentBidTeamId: null,
       currentBidTeam: null,
@@ -456,7 +480,7 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
 
     this.broadcast('player_nominated', roomId, payload);
     if (!room.isPaused) {
-      this.startTimer(roomId, room.bidTimerSeconds, auctionPlayer.id);
+      this.startTimer(roomId, room.bidTimerSeconds, updatedAuctionPlayer.id);
     }
 
     return payload;
@@ -1027,11 +1051,23 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
       return;
     }
 
-    const currentlyNominated = await this.prisma.auctionPlayer.findFirst({
+    if (room.currentAuctionPlayerId) {
+      const activeLot = await this.prisma.auctionPlayer.findUnique({
+        where: { id: room.currentAuctionPlayerId },
+      });
+      if (activeLot && activeLot.status === 'NOMINATED') {
+        this.logger.log(`Skipping auto-nomination for room ${roomId}: lot ${activeLot.id} already active on podium`);
+        return;
+      }
+    }
+
+    // Clean up any stale NOMINATED records if currentAuctionPlayerId is null
+    const staleNominated = await this.prisma.auctionPlayer.findFirst({
       where: { roomId, status: 'NOMINATED' },
     });
-    if (currentlyNominated) {
-      this.logger.log(`Skipping auto-nomination for room ${roomId}: lot ${currentlyNominated.id} already active`);
+    if (staleNominated && !room.currentAuctionPlayerId) {
+      this.logger.warn(`Found stale NOMINATED player ${staleNominated.id} while room.currentAuctionPlayerId is null. Resuming this lot to podium.`);
+      await this.nominatePlayerInternal(roomId, staleNominated.id);
       return;
     }
 

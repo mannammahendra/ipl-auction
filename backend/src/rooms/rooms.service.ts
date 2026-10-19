@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Inject, forwardRef, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { DEFAULT_TEAMS } from '../constants/teams.constant.js';
 import { AuctionEngine } from '../auction/auction.engine.js';
+import { INITIAL_PLAYERS } from '../players/initial-players.data.js';
 
 function shuffleArray<T>(array: T[]): T[] {
   const arr = [...array];
@@ -15,6 +16,8 @@ function shuffleArray<T>(array: T[]): T[] {
 
 @Injectable()
 export class RoomsService {
+  private readonly logger = new Logger(RoomsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => AuctionEngine))
@@ -139,7 +142,14 @@ export class RoomsService {
       });
     }
 
-    const allPlayers = await this.prisma.player.findMany();
+    let allPlayers = await this.prisma.player.findMany();
+    if (allPlayers.length === 0) {
+      this.logger.warn('No players found in database when creating room! Auto-seeding INITIAL_PLAYERS...');
+      for (const p of INITIAL_PLAYERS) {
+        await this.prisma.player.create({ data: p });
+      }
+      allPlayers = await this.prisma.player.findMany();
+    }
 
     const MARQUEE_SET_1_NAMES = new Set([
       'MS Dhoni', 'Rohit Sharma', 'Virat Kohli', 'Jasprit Bumrah',
@@ -309,7 +319,14 @@ export class RoomsService {
       }
     }
 
-    return room;
+    const currentAuctionPlayer = room.currentAuctionPlayerId
+      ? room.auctionPlayers.find((ap) => ap.id === room.currentAuctionPlayerId) || null
+      : room.auctionPlayers.find((ap) => ap.status === 'NOMINATED') || null;
+
+    return {
+      ...room,
+      currentAuctionPlayer,
+    };
   }
 
   async selectTeam(roomId: string, userId: string, teamId: string, managerName?: string) {
@@ -396,6 +413,7 @@ export class RoomsService {
     // Broadcast room_sync & team_selected so all users in the room see this in real-time!
     this.auctionEngine.broadcast('room_sync', updatedRoom.id, {
       room: updatedRoom,
+      currentAuctionPlayer: updatedRoom.currentAuctionPlayer || null,
       serverTime: Date.now(),
     });
 
@@ -520,6 +538,7 @@ export class RoomsService {
 
     this.auctionEngine.broadcast('room_sync', updatedRoom.id, {
       room: updatedRoom,
+      currentAuctionPlayer: updatedRoom.currentAuctionPlayer || null,
       serverTime: Date.now(),
     });
     this.auctionEngine.broadcast('settings_updated', updatedRoom.id, {
@@ -546,6 +565,7 @@ export class RoomsService {
     const room = await this.getRoomById(roomId, userId);
     this.auctionEngine.broadcast('room_sync', room.id, {
       room,
+      currentAuctionPlayer: room.currentAuctionPlayer || null,
       serverTime: Date.now(),
     });
 

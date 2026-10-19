@@ -16,7 +16,7 @@ export function SoldCelebrationModal() {
 
   // Auto-dismiss celebration immediately when a new player is nominated
   useEffect(() => {
-    if (currentAuctionPlayer?.status === 'NOMINATED') {
+    if (currentAuctionPlayer && currentAuctionPlayer.status !== 'SOLD' && currentAuctionPlayer.status !== 'UNSOLD') {
       dismissCelebration();
       setVisible(false);
     }

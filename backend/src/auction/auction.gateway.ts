@@ -323,6 +323,21 @@ export class AuctionGateway implements OnGatewayConnection, OnGatewayDisconnect 
     }
   }
 
+  @SubscribeMessage('nominate_next')
+  async handleNominateNext(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { roomId: string },
+  ) {
+    const session = this.activeSockets.get(client.id);
+    if (!session) return;
+    try {
+      await this.auctionEngine.verifyHost(data.roomId, session.userId);
+      await this.auctionEngine.nominateNextUpcomingPlayer(data.roomId);
+    } catch (err: any) {
+      client.emit('error', { message: err.message });
+    }
+  }
+
   @SubscribeMessage('pause_auction')
   async handlePauseAuction(
     @ConnectedSocket() client: Socket,
