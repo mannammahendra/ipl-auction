@@ -338,6 +338,20 @@ export class AuctionGateway implements OnGatewayConnection, OnGatewayDisconnect 
     }
   }
 
+  @SubscribeMessage('timer_expired')
+  async handleTimerExpired(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { roomId: string; lotId?: string },
+  ) {
+    const session = this.activeSockets.get(client.id);
+    if (!session || !data?.roomId) return;
+    try {
+      await this.auctionEngine.handleZeroCountdown(data.roomId, data.lotId);
+    } catch (err: any) {
+      this.logger.warn(`Error in handleTimerExpired: ${err?.message}`);
+    }
+  }
+
   @SubscribeMessage('pause_auction')
   async handlePauseAuction(
     @ConnectedSocket() client: Socket,

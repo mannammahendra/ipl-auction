@@ -104,6 +104,12 @@ class SocketService {
     }
   }
 
+  notifyTimerExpired(roomId: string, lotId?: string) {
+    if (this.socket) {
+      this.socket.emit('timer_expired', { roomId, lotId });
+    }
+  }
+
   pauseAuction(roomId: string) {
     if (this.socket) {
       this.socket.emit('pause_auction', { roomId });

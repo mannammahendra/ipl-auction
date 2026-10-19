@@ -80,6 +80,7 @@ export interface ActiveAuctionTimer {
   pauseRemainingMs?: number;
   speedMultiplier?: number;
   isTransitioning?: boolean;
+  transitionStartedAt?: number;
   lotId?: string | null;
   generation?: number;
 }
@@ -152,20 +153,33 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
     for (const room of activeRooms) {
       try {
         const activeTimer = this.timers.get(room.id);
+        const speed = this.roomSpeeds.get(room.id) || 1.0;
 
         if (room.currentAuctionPlayerId) {
           const endsAt = room.timerEndsAt ? room.timerEndsAt.getTime() : 0;
-          if (endsAt > 0 && now >= endsAt + 3500) {
+          const graceMs = Math.max(1000, Math.round(2000 / speed));
+
+          if (endsAt > 0 && now >= endsAt + graceMs) {
             this.logger.warn(`[Watchdog] Room ${room.id} lot ${room.currentAuctionPlayerId} expired at ${new Date(endsAt).toISOString()} but remained unfinalized. Self-healing...`);
             await this.completeLotWithRetry(room.id, this.timerGenerations.get(room.id) || 0, room.currentAuctionPlayerId);
           } else if (!activeTimer || (!activeTimer.intervalRef && !activeTimer.isPaused && !activeTimer.isTransitioning)) {
-            const remainingSec = endsAt > 0 ? Math.max(1, Math.ceil((endsAt - now) / 1000)) : room.bidTimerSeconds;
-            this.logger.log(`[Watchdog] Rescuing unmonitored lot in room ${room.id}. Resuming countdown with ${remainingSec}s.`);
-            this.startTimer(room.id, remainingSec, room.currentAuctionPlayerId);
+            // Unmonitored lot: check if deadline has already passed
+            if (endsAt > 0 && now >= endsAt) {
+              this.logger.warn(`[Watchdog] Unmonitored expired lot in room ${room.id}. Finalizing lot now.`);
+              await this.completeLotWithRetry(room.id, this.timerGenerations.get(room.id) || 0, room.currentAuctionPlayerId);
+            } else {
+              const remainingSec = endsAt > 0
+                ? Math.max(1, Math.ceil(((endsAt - now) * speed) / 1000))
+                : room.bidTimerSeconds;
+              this.logger.log(`[Watchdog] Rescuing unmonitored lot in room ${room.id}. Resuming countdown with ${remainingSec}s.`);
+              this.startTimer(room.id, remainingSec, room.currentAuctionPlayerId);
+            }
           }
         } else {
-          if (!activeTimer?.nextLotTimeoutRef && !activeTimer?.isTransitioning) {
-            this.logger.warn(`[Watchdog] Room ${room.id} active with empty stage and no transition timeout. Triggering next player nomination.`);
+          const transitionAgeMs = activeTimer?.transitionStartedAt ? now - activeTimer.transitionStartedAt : 0;
+          const isStuckTransition = activeTimer?.isTransitioning && transitionAgeMs > 6000;
+          if ((!activeTimer?.nextLotTimeoutRef && !activeTimer?.isTransitioning) || isStuckTransition) {
+            this.logger.warn(`[Watchdog] Room ${room.id} active with empty stage. Triggering next player nomination.`);
             await this.nominateNextUpcomingPlayer(room.id);
           }
         }
@@ -441,7 +455,8 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
       include: { player: true },
     });
 
-    const timerEndsAt = new Date(Date.now() + room.bidTimerSeconds * 1000);
+    const speed = this.roomSpeeds.get(roomId) || 1.0;
+    const timerEndsAt = new Date(Date.now() + Math.round((room.bidTimerSeconds * 1000) / speed));
 
     await this.prisma.room.update({
       where: { id: roomId },
@@ -654,8 +669,9 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
       // If a player bids, the timer starts from the starting (timer set by the host)
       const startingTimer = room.bidTimerSeconds || 14;
       const remaining = startingTimer;
+      const speed = this.roomSpeeds.get(roomId) || 1.0;
 
-      const timerEndsAt = new Date(Date.now() + remaining * 1000);
+      const timerEndsAt = new Date(Date.now() + Math.round((remaining * 1000) / speed));
 
       await this.prisma.room.update({
         where: { id: roomId },
@@ -741,7 +757,7 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
       // 2. Authoritative deadline-based countdown (immune to event-loop lag and drift)
       const currentNow = Date.now();
       const remainingMs = timerObj.timerEndsAt - currentNow;
-      const remaining = Math.max(0, Math.ceil((remainingMs * speed) / 1000));
+      const remaining = Math.min(timerObj.totalSeconds, Math.max(0, Math.ceil((remainingMs * speed) / 1000)));
       timerObj.remainingSeconds = remaining;
 
       this.broadcast('timer_tick', roomId, {
@@ -751,6 +767,14 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
       });
 
       if (remaining <= 0) {
+        if (timerObj.isTransitioning) {
+          clearInterval(timerObj.intervalRef);
+          timerObj.intervalRef = null;
+          return;
+        }
+
+        timerObj.isTransitioning = true;
+        (timerObj as any).transitionStartedAt = Date.now();
         clearInterval(timerObj.intervalRef);
         timerObj.intervalRef = null;
 
@@ -770,6 +794,12 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
         await this.withLock(roomId, async () => {
+          const currentGen = this.timerGenerations.get(roomId);
+          if (expectedGen !== undefined && currentGen !== undefined && currentGen !== expectedGen) {
+            this.logger.log(`[Room: ${roomId}] Timer generation changed (${expectedGen} -> ${currentGen}). Skipping stale zero completion.`);
+            completed = true;
+            return;
+          }
           await this.handleLotCompletionInternal(roomId, expectedGen, expectedLotId);
         });
         completed = true;
@@ -817,8 +847,19 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
       include: { teams: true },
     });
 
-    if (!room || !room.currentAuctionPlayerId) {
-      this.logger.warn(`[Room: ${roomId}] handleLotCompletion called but no currentAuctionPlayerId found.`);
+    if (!room) {
+      this.logger.warn(`[Room: ${roomId}] handleLotCompletion called but room not found.`);
+      return;
+    }
+
+    if (room.isPaused) {
+      this.logger.log(`[Room: ${roomId}] Room is paused. Skipping lot completion.`);
+      return;
+    }
+
+    if (!room.currentAuctionPlayerId) {
+      this.logger.warn(`[Room: ${roomId}] handleLotCompletion called but no currentAuctionPlayerId found. Proceeding to next nomination.`);
+      await this.nominateNextUpcomingPlayerInternal(roomId);
       return;
     }
 
@@ -827,11 +868,9 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
       return;
     }
 
-    // Check if timer was extended by a late bid
-    if (room.timerEndsAt && room.timerEndsAt.getTime() > Date.now() + 500) {
-      const remainingSec = Math.max(1, Math.ceil((room.timerEndsAt.getTime() - Date.now()) / 1000));
-      this.logger.log(`[Room: ${roomId}] Late bid extended timer to ${room.timerEndsAt.toISOString()} (${remainingSec}s remaining). Resuming countdown.`);
-      this.startTimer(roomId, remainingSec, room.currentAuctionPlayerId);
+    const currentGen = this.timerGenerations.get(roomId);
+    if (expectedGen !== undefined && currentGen !== undefined && currentGen !== expectedGen) {
+      this.logger.log(`[Room: ${roomId}] Generation superseded (${expectedGen} vs ${currentGen}). Skipping stale resolution.`);
       return;
     }
 
@@ -893,6 +932,7 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
             currentAuctionPlayerId: null,
             currentBidAmount: 0,
             currentBidTeamId: null,
+            timerEndsAt: null,
           },
         });
 
@@ -930,6 +970,9 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
         select: { isPaused: true, status: true },
       });
 
+      const speed = this.roomSpeeds.get(roomId) || 1.0;
+      const transitionDelayMs = Math.max(1000, Math.round(4000 / speed));
+
       if (roomState && !roomState.isPaused && roomState.status === 'AUCTION_ACTIVE') {
         const nextTimeout = setTimeout(async () => {
           try {
@@ -937,7 +980,7 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
           } catch (err: any) {
             this.logger.error(`Error nominating next upcoming player: ${err?.message}`);
           }
-        }, 4000);
+        }, transitionDelayMs);
         this.timers.set(roomId, {
           roomId,
           intervalRef: null,
@@ -947,6 +990,8 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
           totalSeconds: 0,
           isPaused: false,
           isTransitioning: true,
+          speedMultiplier: speed,
+          transitionStartedAt: Date.now(),
         });
       } else {
         this.timers.set(roomId, {
@@ -957,7 +1002,7 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
           remainingSeconds: 0,
           totalSeconds: 0,
           isPaused: true,
-          isTransitioning: true,
+          isTransitioning: false,
         });
       }
     } else {
@@ -973,6 +1018,7 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
             currentAuctionPlayerId: null,
             currentBidAmount: 0,
             currentBidTeamId: null,
+            timerEndsAt: null,
           },
         });
 
@@ -1002,6 +1048,9 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
         select: { isPaused: true, status: true },
       });
 
+      const speed = this.roomSpeeds.get(roomId) || 1.0;
+      const transitionDelayMs = Math.max(800, Math.round(2500 / speed));
+
       if (roomState && !roomState.isPaused && roomState.status === 'AUCTION_ACTIVE') {
         const nextTimeout = setTimeout(async () => {
           try {
@@ -1009,7 +1058,7 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
           } catch (err: any) {
             this.logger.error(`Error nominating next upcoming player: ${err?.message}`);
           }
-        }, 2500);
+        }, transitionDelayMs);
         this.timers.set(roomId, {
           roomId,
           intervalRef: null,
@@ -1019,6 +1068,8 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
           totalSeconds: 0,
           isPaused: false,
           isTransitioning: true,
+          speedMultiplier: speed,
+          transitionStartedAt: Date.now(),
         });
       } else {
         this.timers.set(roomId, {
@@ -1029,7 +1080,7 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
           remainingSeconds: 0,
           totalSeconds: 0,
           isPaused: true,
-          isTransitioning: true,
+          isTransitioning: false,
         });
       }
     }
@@ -1048,6 +1099,8 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
 
     if (!room || room.isPaused || room.status !== 'AUCTION_ACTIVE') {
       this.logger.log(`Skipping auto-nomination for room ${roomId}: room is paused or not active`);
+      const timer = this.timers.get(roomId);
+      if (timer) timer.isTransitioning = false;
       return;
     }
 
@@ -1057,6 +1110,8 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
       });
       if (activeLot && activeLot.status === 'NOMINATED') {
         this.logger.log(`Skipping auto-nomination for room ${roomId}: lot ${activeLot.id} already active on podium`);
+        const timer = this.timers.get(roomId);
+        if (timer) timer.isTransitioning = false;
         return;
       }
     }
@@ -1098,11 +1153,14 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
     if (unsoldPlayers.length > 0 && !allSquadsFull && currentRound < 5) {
       this.logger.log(`Room ${roomId}: Round ${currentRound} complete with ${unsoldPlayers.length} unsold players. Scheduling Accelerated Round.`);
 
+      const speed = this.roomSpeeds.get(roomId) || 1.0;
+      const intermissionSeconds = Math.max(3, Math.round(8 / speed));
+
       this.broadcast('round_completed', roomId, {
         round: currentRound,
         unsoldAvailable: unsoldPlayers.length,
-        message: `Round ${currentRound} complete! ${unsoldPlayers.length} unsold players returning for Accelerated Blitz Round in 8 seconds!`,
-        intermissionSeconds: 8,
+        message: `Round ${currentRound} complete! ${unsoldPlayers.length} unsold players returning for Accelerated Blitz Round in ${intermissionSeconds} seconds!`,
+        intermissionSeconds,
       });
 
       this.clearTimer(roomId);
@@ -1114,23 +1172,28 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
         } catch (err: any) {
           this.logger.error(`Failed to auto-start accelerated round for room ${roomId}: ${err?.message}`);
         }
-      }, 8000);
+      }, intermissionSeconds * 1000);
 
       this.timers.set(roomId, {
         roomId,
         intervalRef: null,
         nextLotTimeoutRef: intermissionTimeout,
-        timerEndsAt: Date.now() + 8000,
-        remainingSeconds: 8,
-        totalSeconds: 8,
+        timerEndsAt: Date.now() + intermissionSeconds * 1000,
+        remainingSeconds: intermissionSeconds,
+        totalSeconds: intermissionSeconds,
         isPaused: false,
         isTransitioning: true,
+        speedMultiplier: speed,
+        transitionStartedAt: Date.now(),
       });
     } else {
       await this.prisma.room.update({
         where: { id: roomId },
-        data: { status: 'COMPLETED', currentAuctionPlayerId: null },
+        data: { status: 'COMPLETED', currentAuctionPlayerId: null, timerEndsAt: null },
       });
+
+      const timer = this.timers.get(roomId);
+      if (timer) timer.isTransitioning = false;
 
       this.broadcast('auction_completed', roomId, {
         message: 'The IPL Mega Auction is completed! Congratulations to all franchises!',
@@ -1247,10 +1310,16 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
 
       this.roomSpeeds.set(room.id, nextSpeed);
 
-      // If timer is active and running, restart it cleanly with updated speed
+      // If timer is active and running, restart it cleanly with updated speed and sync DB timerEndsAt
       const timer = this.timers.get(room.id);
       if (timer && timer.intervalRef && !timer.isPaused) {
-        this.startTimer(room.id, timer.remainingSeconds, timer.lotId || undefined);
+        const remainingSec = timer.remainingSeconds;
+        const newEndsAt = new Date(Date.now() + Math.round((remainingSec * 1000) / nextSpeed));
+        await this.prisma.room.update({
+          where: { id: room.id },
+          data: { timerEndsAt: newEndsAt },
+        });
+        this.startTimer(room.id, remainingSec, timer.lotId || undefined);
       }
 
       const message = nextSpeed === 1.0
@@ -1270,6 +1339,37 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
 
   getRoomSpeed(roomId: string): number {
     return this.roomSpeeds.get(roomId) || 1.0;
+  }
+
+  async handleZeroCountdown(roomId: string, lotId?: string) {
+    return await this.withLock(roomId, async () => {
+      const room = await this.prisma.room.findUnique({
+        where: { id: roomId },
+      });
+      if (!room || room.isPaused || room.status !== 'AUCTION_ACTIVE') return;
+
+      if (room.currentAuctionPlayerId) {
+        if (lotId && room.currentAuctionPlayerId !== lotId) {
+          return;
+        }
+
+        const ap = await this.prisma.auctionPlayer.findUnique({
+          where: { id: room.currentAuctionPlayerId },
+        });
+
+        if (ap && ap.status === 'NOMINATED') {
+          this.logger.log(`[Zero Countdown] Executing resolution for nominated lot ${ap.id} in room ${roomId}`);
+          await this.handleLotCompletionInternal(roomId, undefined, ap.id);
+          return;
+        }
+      }
+
+      const timer = this.timers.get(roomId);
+      if (!timer?.nextLotTimeoutRef && !timer?.isTransitioning) {
+        this.logger.log(`[Zero Countdown] Stage empty in room ${roomId}. Nominating next player.`);
+        await this.nominateNextUpcomingPlayerInternal(roomId);
+      }
+    });
   }
 
   async sellNow(roomId: string, hostUserId: string) {

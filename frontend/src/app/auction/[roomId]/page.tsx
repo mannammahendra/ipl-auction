@@ -177,6 +177,14 @@ export default function LiveAuctionArenaPage() {
           }
         });
 
+        const zeroFallbackTimeoutRef = { current: null as any };
+        const clearZeroFallback = () => {
+          if (zeroFallbackTimeoutRef.current) {
+            clearTimeout(zeroFallbackTimeoutRef.current);
+            zeroFallbackTimeoutRef.current = null;
+          }
+        };
+
         // 1. Timer countdown: Loud countdown for last 3 seconds (Three!, Two!, One!) scaled to timer speed
         socket.on('timer_tick', (data: { remainingSeconds: number; speedMultiplier?: number }) => {
           setTimer(data.remainingSeconds);
@@ -188,10 +196,24 @@ export default function LiveAuctionArenaPage() {
             const currentSpeed = data.speedMultiplier || useAuctionStore.getState().speedMultiplier || 1.0;
             auctioneerVoice.announceCountdown(data.remainingSeconds, currentSpeed);
           }
+
+          if (data.remainingSeconds === 0) {
+            clearZeroFallback();
+            const activePlayerId = useAuctionStore.getState().currentAuctionPlayer?.id;
+            zeroFallbackTimeoutRef.current = setTimeout(() => {
+              const currentAP = useAuctionStore.getState().currentAuctionPlayer;
+              if (currentAP && currentAP.status === 'NOMINATED' && currentAP.id === activePlayerId) {
+                socketService.notifyTimerExpired(roomId, activePlayerId);
+              }
+            }, 1200);
+          } else {
+            clearZeroFallback();
+          }
         });
 
         // 2. Bid placed: Speak out Team and Amount in Ellie Goulding voice (e.g. "CSK 2 Crore" or "MI 40 Crore")
         socket.on('bid_placed', (data: any) => {
+          clearZeroFallback();
           onBidPlaced(data);
           const teamShort =
             data.team?.shortName ||
@@ -206,6 +228,7 @@ export default function LiveAuctionArenaPage() {
 
         // 3. Player nominated: ONLY player name & type (e.g. "Virat Kohli, Batsman")
         socket.on('player_nominated', (data: any) => {
+          clearZeroFallback();
           onPlayerNominated(data);
           auctioneerVoice.resetBiddingCadence();
           const ap = data.auctionPlayer;
@@ -219,6 +242,7 @@ export default function LiveAuctionArenaPage() {
 
         // 4. Sold: ONLY "Sold to {team} for {amount}!"
         socket.on('player_sold', (data: any) => {
+          clearZeroFallback();
           onPlayerSold(data);
           const soldId = data.auctionPlayer?.id || data.auctionPlayer?.player?.id;
           if (soldId) {
@@ -233,6 +257,7 @@ export default function LiveAuctionArenaPage() {
 
         // 5. Unsold: all sounds when player is unsold removed
         socket.on('player_unsold', (data: any) => {
+          clearZeroFallback();
           onPlayerUnsold(data);
           const unsoldId = data.auctionPlayer?.id || data.auctionPlayer?.player?.id;
           if (unsoldId) {
