@@ -430,14 +430,18 @@ export const PLAYER_PHOTOS: Record<string, string> = {
   "Zeeshan Ansari": "https://ts4.mm.bing.net/th?id=OIP.Y-cs2X_14761VgzGivm5rwAAAA&pid=15.1",
 };
 
-export function getPlayerPhoto(player: { name: string; image?: string | null }): string {
+export function getPlayerPhoto(player: { name?: string | null; image?: string | null } | null | undefined): string {
+  if (!player) {
+    return 'https://ui-avatars.com/api/?name=Player&background=0f172a&color=f8fafc&size=256&bold=true';
+  }
   if (player.image && player.image.startsWith('/')) {
     return player.image;
   }
-  if (PLAYER_PHOTOS[player.name]) {
-    return PLAYER_PHOTOS[player.name];
+  const playerName = (player.name || '').trim();
+  if (playerName && PLAYER_PHOTOS[playerName]) {
+    return PLAYER_PHOTOS[playerName];
   }
-  const cleanName = player.name ? player.name.trim().toLowerCase() : '';
+  const cleanName = playerName.toLowerCase();
   if (cleanName) {
     for (const [k, v] of Object.entries(PLAYER_PHOTOS)) {
       if (k.toLowerCase() === cleanName) return v;
@@ -454,16 +458,20 @@ export function getPlayerPhoto(player: { name: string; image?: string | null }):
   ) {
     return player.image;
   }
-  return `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name || 'Player')}&background=0f172a&color=f8fafc&size=256&bold=true`;
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(playerName || 'Player')}&background=0f172a&color=f8fafc&size=256&bold=true`;
 }
 
-export function resolvePlayerPhoto(name: string, fallback?: string): string {
-  if (PLAYER_PHOTOS[name]) return PLAYER_PHOTOS[name];
-  const cleanName = name.trim().toLowerCase();
+export function resolvePlayerPhoto(name?: string | null, fallback?: string): string {
+  const safeName = (name || '').trim();
+  if (!safeName) {
+    return fallback || 'https://ui-avatars.com/api/?name=Player&background=0f172a&color=f8fafc&size=256&bold=true';
+  }
+  if (PLAYER_PHOTOS[safeName]) return PLAYER_PHOTOS[safeName];
+  const cleanName = safeName.toLowerCase();
   for (const [k, v] of Object.entries(PLAYER_PHOTOS)) {
     if (k.toLowerCase() === cleanName) return v;
   }
-  return fallback || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0f172a&color=f8fafc&size=256&bold=true`;
+  return fallback || `https://ui-avatars.com/api/?name=${encodeURIComponent(safeName)}&background=0f172a&color=f8fafc&size=256&bold=true`;
 }
 
 export interface BasePriceListInfo {

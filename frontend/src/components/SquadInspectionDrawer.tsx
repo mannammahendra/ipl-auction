@@ -20,6 +20,7 @@ import {
 import TeamLogo from './TeamLogo';
 import { SquadPosterModal } from './SquadPosterModal';
 import { getPlayerPhoto } from '../lib/playerPhotos';
+import { PlayerPortrait } from './PlayerPortrait';
 
 interface SquadInspectionDrawerProps {
   isOpen: boolean;
@@ -60,12 +61,43 @@ export function SquadInspectionDrawer({
     return teams.find((t) => t.id === selectedTeamId) || teams[0] || null;
   }, [teams, selectedTeamId]);
 
-  // Find all players purchased by this team
+  // Find all players purchased by this team (harmonized from both squad and auctionPlayers)
   const teamPurchasedPlayers = useMemo(() => {
     if (!selectedTeam) return [];
-    return auctionPlayers.filter(
-      (ap) => ap.status === 'SOLD' && ap.soldToTeamId === selectedTeam.id
-    );
+    const list: any[] = [];
+    const seen = new Set<string>();
+
+    if (selectedTeam.squad && Array.isArray(selectedTeam.squad)) {
+      selectedTeam.squad.forEach((m) => {
+        const idKey = m.playerId || m.player?.id || m.id;
+        if (idKey && !seen.has(idKey) && m.player) {
+          seen.add(idKey);
+          list.push({
+            id: m.auctionPlayerId || `squad_${m.id}`,
+            playerId: m.playerId,
+            teamId: selectedTeam.id,
+            soldToTeamId: selectedTeam.id,
+            status: 'SOLD',
+            soldPrice: m.purchasePrice,
+            player: m.player,
+          });
+        }
+      });
+    }
+
+    if (auctionPlayers && Array.isArray(auctionPlayers)) {
+      auctionPlayers
+        .filter((ap) => ap.status === 'SOLD' && ap.soldToTeamId === selectedTeam.id)
+        .forEach((ap) => {
+          const idKey = ap.playerId || ap.player?.id || ap.id;
+          if (idKey && !seen.has(idKey) && ap.player) {
+            seen.add(idKey);
+            list.push(ap);
+          }
+        });
+    }
+
+    return list;
   }, [auctionPlayers, selectedTeam]);
 
   // Filter players by role and search query
@@ -366,19 +398,10 @@ export function SquadInspectionDrawer({
                   >
                     <div className="flex items-start gap-3">
                       {/* High-res player photo with fallback */}
-                      <div className="relative w-14 h-16 rounded-xl overflow-hidden bg-slate-900 border border-slate-700/80 shrink-0 shadow-inner flex items-center justify-center">
-                        <img
-                          src={getPlayerPhoto(p)}
-                          alt={p.name}
-                          className="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-110 rounded-xl"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                              p.name
-                            )}&background=0f172a&color=f8fafc&size=128&bold=true`;
-                          }}
-                        />
+                      <div className="relative shrink-0">
+                        <PlayerPortrait player={p} className="w-14 h-16 rounded-xl" />
                         {p.isOverseas && (
-                          <span className="absolute bottom-0 right-0 px-1 py-0.2 rounded-tl-md bg-blue-600 text-[8px] font-black text-white">
+                          <span className="absolute bottom-0 right-0 px-1 py-0.5 rounded-tl-md bg-blue-600 text-[8px] font-black text-white z-10">
                             OS
                           </span>
                         )}

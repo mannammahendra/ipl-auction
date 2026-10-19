@@ -13,7 +13,7 @@ export const INITIAL_PLAYERS = [
     bowlingStyle: 'Right-arm Medium',
     tier: 'MARQUEE',
     basePrice: 20000000,
-    image: 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?w=400&auto=format&fit=crop&q=80',
+    image: '/players/virat_kohli.png',
     stats: JSON.stringify({ matches: 252, runs: 8004, avg: 38.67, strikeRate: 131.97, hundreds: 8, fifties: 55 }),
   },
   {
@@ -25,7 +25,7 @@ export const INITIAL_PLAYERS = [
     bowlingStyle: 'Right-arm Fast',
     tier: 'MARQUEE',
     basePrice: 20000000,
-    image: 'https://images.unsplash.com/photo-1531415074968-036ba1b575da?w=400&auto=format&fit=crop&q=80',
+    image: '/players/jasprit_bumrah.png',
     stats: JSON.stringify({ matches: 133, wickets: 165, economy: 7.30, avg: 22.51, bbi: '5/10' }),
   },
   {
@@ -37,7 +37,7 @@ export const INITIAL_PLAYERS = [
     bowlingStyle: 'Right-arm Offbreak',
     tier: 'MARQUEE',
     basePrice: 20000000,
-    image: 'https://images.unsplash.com/photo-1519766304817-4f37bda74a29?w=400&auto=format&fit=crop&q=80',
+    image: '/players/rohit_sharma.png',
     stats: JSON.stringify({ matches: 257, runs: 6628, avg: 29.72, strikeRate: 131.14, hundreds: 2, fifties: 43 }),
   },
   {
@@ -49,7 +49,7 @@ export const INITIAL_PLAYERS = [
     bowlingStyle: 'Right-arm Offbreak',
     tier: 'MARQUEE',
     basePrice: 20000000,
-    image: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=400&auto=format&fit=crop&q=80',
+    image: '/players/heinrich_klaasen.png',
     stats: JSON.stringify({ matches: 35, runs: 993, avg: 39.72, strikeRate: 168.31, hundreds: 1, fifties: 6 }),
   },
   {
@@ -61,7 +61,7 @@ export const INITIAL_PLAYERS = [
     bowlingStyle: 'Right-arm Fast',
     tier: 'MARQUEE',
     basePrice: 20000000,
-    image: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=400&auto=format&fit=crop&q=80',
+    image: '/players/pat_cummins.png',
     stats: JSON.stringify({ matches: 58, wickets: 63, economy: 8.78, runs: 515, strikeRate: 147.14 }),
   },
   {
@@ -73,7 +73,7 @@ export const INITIAL_PLAYERS = [
     bowlingStyle: 'Right-arm Offbreak',
     tier: 'MARQUEE',
     basePrice: 20000000,
-    image: 'https://images.unsplash.com/photo-1560272564-c83b66b1ad12?w=400&auto=format&fit=crop&q=80',
+    image: '/players/travis_head.png',
     stats: JSON.stringify({ matches: 25, runs: 772, avg: 36.76, strikeRate: 180.37, hundreds: 1, fifties: 5 }),
   },
   {
@@ -85,7 +85,7 @@ export const INITIAL_PLAYERS = [
     bowlingStyle: 'Right-arm Legbreak',
     tier: 'MARQUEE',
     basePrice: 20000000,
-    image: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=400&auto=format&fit=crop&q=80',
+    image: '/players/rashid_khan.png',
     stats: JSON.stringify({ matches: 121, wickets: 149, economy: 6.82, avg: 21.84, strikeRate: 140.0 }),
   },
   {
@@ -97,7 +97,7 @@ export const INITIAL_PLAYERS = [
     bowlingStyle: 'Right-arm Medium',
     tier: 'MARQUEE',
     basePrice: 20000000,
-    image: 'https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=400&auto=format&fit=crop&q=80',
+    image: '/players/rishabh_pant.png',
     stats: JSON.stringify({ matches: 111, runs: 3284, avg: 35.31, strikeRate: 148.93, hundreds: 1, fifties: 18 }),
   },
   {
@@ -109,7 +109,7 @@ export const INITIAL_PLAYERS = [
     bowlingStyle: 'Right-arm Fast Medium',
     tier: 'MARQUEE',
     basePrice: 20000000,
-    image: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=400&auto=format&fit=crop&q=80',
+    image: '/players/hardik_pandya.png',
     stats: JSON.stringify({ matches: 137, runs: 2525, avg: 28.69, strikeRate: 145.86, wickets: 64, economy: 8.92 }),
   },
   {
@@ -121,7 +121,7 @@ export const INITIAL_PLAYERS = [
     bowlingStyle: 'Right-arm Medium',
     tier: 'MARQUEE',
     basePrice: 20000000,
-    image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80',
+    image: '/players/suryakumar_yadav.png',
     stats: JSON.stringify({ matches: 150, runs: 3594, avg: 32.08, strikeRate: 145.32, hundreds: 2, fifties: 24 }),
   },
   {
@@ -133,7 +133,7 @@ export const INITIAL_PLAYERS = [
     bowlingStyle: 'Left-arm Fast',
     tier: 'MARQUEE',
     basePrice: 20000000,
-    image: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&auto=format&fit=crop&q=80',
+    image: '/players/mitchell_starc.png',
     stats: JSON.stringify({ matches: 41, wickets: 51, economy: 8.35, avg: 23.41, bbi: '4/15' }),
   },
   {
@@ -145,7 +145,7 @@ export const INITIAL_PLAYERS = [
     bowlingStyle: 'Right-arm Medium',
     tier: 'MARQUEE',
     basePrice: 20000000,
-    image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80',
+    image: 'https://ts1.mm.bing.net/th?id=OIP.7wRkn1l626j_qK7r47K0wQHaHa&pid=15.1',
     stats: JSON.stringify({ matches: 107, runs: 3582, avg: 38.11, strikeRate: 147.53, hundreds: 7, fifties: 19 }),
   },
 
@@ -507,7 +507,7 @@ export const INITIAL_PLAYERS = [
     bowlingStyle: 'Right-arm Medium',
     tier: 'MARQUEE',
     basePrice: 20000000,
-    image: 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?w=400&auto=format&fit=crop&q=80',
+    image: '/players/ms_dhoni.jpg',
     stats: JSON.stringify({ matches: 264, runs: 5243, avg: 39.13, strikeRate: 137.53, fifties: 24, stumpings: 42, catches: 142 }),
   },
   {
@@ -1471,6 +1471,7 @@ export const DEFAULT_TEAMS = [
 async function main() {
   console.log('--- Seeding IPL Auction Players ---');
   let inserted = 0;
+  let updated = 0;
   for (const player of INITIAL_PLAYERS) {
     const existing = await prisma.player.findFirst({
       where: { name: player.name },
@@ -1480,9 +1481,18 @@ async function main() {
         data: player,
       });
       inserted++;
+    } else if (
+      player.image &&
+      (existing.image !== player.image || existing.image?.includes('unsplash.com'))
+    ) {
+      await prisma.player.update({
+        where: { id: existing.id },
+        data: { image: player.image },
+      });
+      updated++;
     }
   }
-  console.log(`Seeded ${inserted} new players into the database.`);
+  console.log(`Seeded ${inserted} new players, updated ${updated} existing players in the database.`);
 }
 
 main()

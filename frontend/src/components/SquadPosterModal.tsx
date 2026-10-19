@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { formatRupeesCompact } from './PurseRadarModal';
 import { getPlayerPhoto } from '../lib/playerPhotos';
+import { PlayerPortrait } from './PlayerPortrait';
 
 interface SquadPosterModalProps {
   isOpen: boolean;
@@ -383,13 +384,7 @@ export const SquadPosterModal: React.FC<SquadPosterModalProps> = ({
                         key={member.id || idx}
                         className="flex items-center gap-2.5 p-2 rounded-xl bg-slate-950/80 border border-slate-800/80 hover:border-slate-700 transition-colors shadow-sm"
                       >
-                        <div className="w-9 h-9 rounded-lg overflow-hidden bg-slate-800 border border-slate-700 shrink-0">
-                          <img
-                            src={p ? getPlayerPhoto(p) : fallbackImg}
-                            alt={p?.name}
-                            className="w-full h-full object-cover object-top"
-                          />
-                        </div>
+                        <PlayerPortrait player={p} className="w-9 h-9 rounded-lg" />
 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-1">

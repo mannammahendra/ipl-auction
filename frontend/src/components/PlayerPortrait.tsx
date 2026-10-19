@@ -4,11 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { getPlayerPhoto, PLAYER_PHOTOS } from '../lib/playerPhotos';
 
 interface PlayerPortraitProps {
-  player: {
-    name: string;
+  player?: {
+    name?: string | null;
     image?: string | null;
-    role?: string;
-  };
+    role?: string | null;
+  } | null;
   className?: string;
   imageClassName?: string;
   priority?: boolean;
@@ -24,19 +24,20 @@ export function PlayerPortrait({
   const [currentSrc, setCurrentSrc] = useState<string>(photoUrl);
   const [hasTriedCurated, setHasTriedCurated] = useState(false);
 
+  const playerName = player?.name || 'Player';
   const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-    player.name || 'Player'
+    playerName
   )}&background=0f172a&color=f8fafc&size=256&bold=true`;
 
   // Always reset image state when player changes so previous player errors don't stick
   useEffect(() => {
     setCurrentSrc(photoUrl);
     setHasTriedCurated(false);
-  }, [player.name, player.image, photoUrl]);
+  }, [player?.name, player?.image, photoUrl]);
 
   const handleImageError = () => {
     // If external/db image failed, try curated PLAYER_PHOTOS mapping first
-    const curated = PLAYER_PHOTOS[player.name];
+    const curated = player?.name ? PLAYER_PHOTOS[player.name] : null;
     if (curated && !hasTriedCurated && curated !== currentSrc) {
       setHasTriedCurated(true);
       setCurrentSrc(curated);
@@ -47,18 +48,20 @@ export function PlayerPortrait({
     setCurrentSrc(fallbackAvatar);
   };
 
+  const defaultRounding = className.includes('rounded-') ? '' : 'rounded-2xl';
+
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl border border-slate-700/80 bg-slate-900 flex items-center justify-center shadow-xl select-none shrink-0 ${className}`}
+      className={`relative overflow-hidden ${defaultRounding} border border-slate-700/80 bg-slate-900 flex items-center justify-center shadow-xl select-none shrink-0 ${className}`}
     >
       <img
         src={currentSrc}
-        alt={player.name}
+        alt={playerName}
         loading={priority ? 'eager' : 'lazy'}
         referrerPolicy="no-referrer"
         crossOrigin="anonymous"
         onError={handleImageError}
-        className={`w-full h-full object-cover object-[center_top] transition-transform duration-300 hover:scale-105 rounded-2xl ${imageClassName}`}
+        className={`w-full h-full object-cover object-[center_top] transition-transform duration-300 hover:scale-105 rounded-[inherit] ${imageClassName}`}
       />
     </div>
   );

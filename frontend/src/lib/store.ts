@@ -393,14 +393,15 @@ export const useAuctionStore = create<AuctionStore>((set) => ({
   onPlayerSold: ({ auctionPlayer, winningTeam, soldPrice, squadMember }) => {
     soundFx.playGavel();
 
-    const memberToAdd: SquadMember = squadMember || {
-      id: `squad_${auctionPlayer.id}`,
+    const memberToAdd: SquadMember = {
+      ...(squadMember || {}),
+      id: squadMember?.id || `squad_${auctionPlayer.id}`,
       teamId: winningTeam.id,
       playerId: auctionPlayer.playerId,
       auctionPlayerId: auctionPlayer.id,
       purchasePrice: soldPrice,
-      player: auctionPlayer.player,
-      createdAt: new Date().toISOString(),
+      player: (squadMember as any)?.player || auctionPlayer.player,
+      createdAt: (squadMember as any)?.createdAt || new Date().toISOString(),
     };
 
     set((state) => {

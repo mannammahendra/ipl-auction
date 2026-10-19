@@ -5,6 +5,7 @@ import { useAuctionStore, Team } from '../lib/store';
 import { formatRupees } from '../lib/formatters';
 import { Users, Globe, Wallet, ChevronDown, ChevronUp } from 'lucide-react';
 import TeamLogo from './TeamLogo';
+import { PlayerPortrait } from './PlayerPortrait';
 
 interface FranchiseLeaderboardProps {
   onSelectTeam?: (team: Team) => void;
@@ -164,19 +165,7 @@ export const FranchiseLeaderboard = React.memo(function FranchiseLeaderboard({ o
                             key={ap.id}
                             className="flex items-center gap-2.5 p-2 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition-colors shadow-sm"
                           >
-                            <div className="w-11 h-11 rounded-lg overflow-hidden bg-slate-800 shrink-0 border border-slate-700 flex items-center justify-center">
-                              <img
-                                src={
-                                  p.image ||
-                                  `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=1e293b&color=f59e0b&size=100&bold=true`
-                                }
-                                alt={p.name}
-                                className="w-full h-full object-cover object-top"
-                                onError={(e) => {
-                                  (e.currentTarget as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=1e293b&color=f59e0b&size=100&bold=true`;
-                                }}
-                              />
-                            </div>
+                            <PlayerPortrait player={p} className="w-11 h-11 rounded-lg" />
                             <div className="flex-1 min-w-0">
                               <h4 className="text-xs font-bold text-white truncate" title={p.name}>
                                 {p.name}

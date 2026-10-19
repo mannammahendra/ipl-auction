@@ -18,6 +18,7 @@ import {
 import TeamLogo from './TeamLogo';
 import { socketService } from '../lib/socket';
 import { getPlayerPhoto, getPlayerBasePriceList, BASE_PRICE_LISTS } from '../lib/playerPhotos';
+import { PlayerPortrait } from './PlayerPortrait';
 
 interface AuctionPoolRecordsModalProps {
   isOpen: boolean;
@@ -445,19 +446,7 @@ export function AuctionPoolRecordsModal({
                       )}
 
                       {/* Prominent Player Picture Thumbnail */}
-                      <div className="w-12 h-14 rounded-xl bg-slate-900 border border-slate-700/80 overflow-hidden flex items-center justify-center shrink-0 shadow-inner">
-                        <img
-                          src={getPlayerPhoto(p)}
-                          alt={p.name}
-                          className="w-full h-full object-cover object-top hover:scale-110 transition-transform duration-200 rounded-xl"
-                          loading="lazy"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                              p.name
-                            )}&background=0f172a&color=f8fafc&size=128&bold=true`;
-                          }}
-                        />
-                      </div>
+                      <PlayerPortrait player={p} className="w-12 h-14 rounded-xl" />
 
                       {/* Player Info */}
                       <div>
