@@ -1,6 +1,72 @@
-import { Injectable, Logger, BadRequestException, ForbiddenException, NotFoundException, OnApplicationBootstrap } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, ForbiddenException, NotFoundException, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { calculateNextValidBid as calcNextBid } from '../constants/auctionRules.js';
+
+interface LockWaiter {
+  resolve: () => void;
+  reject: (err: any) => void;
+  timer: NodeJS.Timeout;
+}
+
+export class RoomMutex {
+  private locked = false;
+  private queue: LockWaiter[] = [];
+
+  async acquire(timeoutMs = 15000): Promise<() => void> {
+    if (!this.locked) {
+      this.locked = true;
+      let released = false;
+      return () => {
+        if (!released) {
+          released = true;
+          this.release();
+        }
+      };
+    }
+
+    return new Promise<() => void>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        const idx = this.queue.findIndex((w) => w.timer === timer);
+        if (idx !== -1) {
+          this.queue.splice(idx, 1);
+        }
+        reject(new Error(`Room lock acquisition timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+
+      this.queue.push({
+        resolve: () => {
+          clearTimeout(timer);
+          let released = false;
+          resolve(() => {
+            if (!released) {
+              released = true;
+              this.release();
+            }
+          });
+        },
+        reject: (err) => {
+          clearTimeout(timer);
+          reject(err);
+        },
+        timer,
+      });
+    });
+  }
+
+  private release() {
+    if (this.queue.length > 0) {
+      const next = this.queue.shift()!;
+      next.resolve();
+    } else {
+      this.locked = false;
+    }
+  }
+
+  isIdle(): boolean {
+    return !this.locked && this.queue.length === 0;
+  }
+}
 
 export interface ActiveAuctionTimer {
   roomId: string;
@@ -13,26 +79,134 @@ export interface ActiveAuctionTimer {
   pauseRemainingMs?: number;
   speedMultiplier?: number;
   isTransitioning?: boolean;
+  lotId?: string | null;
+  generation?: number;
 }
 
 @Injectable()
-export class AuctionEngine implements OnApplicationBootstrap {
+export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
   private readonly logger = new Logger(AuctionEngine.name);
   private timers = new Map<string, ActiveAuctionTimer>();
-  private roomLocks = new Map<string, Promise<void>>();
+  private roomMutexes = new Map<string, RoomMutex>();
+  private lockStorage = new AsyncLocalStorage<Set<string>>();
+  private timerGenerations = new Map<string, number>();
   private roomSpeeds = new Map<string, number>();
   private broadcastCallback?: (event: string, roomId: string, payload: any) => void;
+  private watchdogIntervalRef: any = null;
+  private isWatchdogRunning = false;
 
   constructor(private readonly prisma: PrismaService) {}
 
   async onApplicationBootstrap() {
-    this.logger.log('AuctionEngine initializing - reconciling active auctions after bootstrap/restart...');
+    this.logger.log('AuctionEngine initializing - reconciling active auctions and starting liveness watchdog...');
     try {
       await this.reconcileActiveAuctions();
     } catch (err: any) {
       this.logger.error(`Error during auction reconciliation on bootstrap: ${err?.message}`, err?.stack);
     }
+    this.startWatchdog();
   }
+
+  onModuleDestroy() {
+    if (this.watchdogIntervalRef) {
+      clearInterval(this.watchdogIntervalRef);
+      this.watchdogIntervalRef = null;
+    }
+    for (const [roomId] of this.timers) {
+      this.clearTimer(roomId);
+    }
+  }
+
+  startWatchdog() {
+    if (this.watchdogIntervalRef) return;
+    this.watchdogIntervalRef = setInterval(async () => {
+      if (this.isWatchdogRunning) return;
+      this.isWatchdogRunning = true;
+      try {
+        await this.runLivenessWatchdogCheck();
+      } catch (err: any) {
+        this.logger.error(`Error in liveness watchdog: ${err?.message}`);
+      } finally {
+        this.isWatchdogRunning = false;
+      }
+    }, 4000);
+  }
+
+  async runLivenessWatchdogCheck() {
+    const activeRooms = await this.prisma.room.findMany({
+      where: { status: 'AUCTION_ACTIVE', isPaused: false },
+      select: {
+        id: true,
+        currentAuctionPlayerId: true,
+        timerEndsAt: true,
+        bidTimerSeconds: true,
+        updatedAt: true,
+      },
+    });
+
+    if (activeRooms.length === 0) return;
+
+    const now = Date.now();
+
+    for (const room of activeRooms) {
+      try {
+        const activeTimer = this.timers.get(room.id);
+
+        if (room.currentAuctionPlayerId) {
+          const endsAt = room.timerEndsAt ? room.timerEndsAt.getTime() : 0;
+          if (endsAt > 0 && now >= endsAt + 3500) {
+            this.logger.warn(`[Watchdog] Room ${room.id} lot ${room.currentAuctionPlayerId} expired at ${new Date(endsAt).toISOString()} but remained unfinalized. Self-healing...`);
+            await this.completeLotWithRetry(room.id, this.timerGenerations.get(room.id) || 0, room.currentAuctionPlayerId);
+          } else if (!activeTimer || (!activeTimer.intervalRef && !activeTimer.isPaused && !activeTimer.isTransitioning)) {
+            const remainingSec = endsAt > 0 ? Math.max(1, Math.ceil((endsAt - now) / 1000)) : room.bidTimerSeconds;
+            this.logger.log(`[Watchdog] Rescuing unmonitored lot in room ${room.id}. Resuming countdown with ${remainingSec}s.`);
+            this.startTimer(room.id, remainingSec, room.currentAuctionPlayerId);
+          }
+        } else {
+          if (!activeTimer?.nextLotTimeoutRef && !activeTimer?.isTransitioning) {
+            this.logger.warn(`[Watchdog] Room ${room.id} active with empty stage and no transition timeout. Triggering next player nomination.`);
+            await this.nominateNextUpcomingPlayer(room.id);
+          }
+        }
+      } catch (err: any) {
+        this.logger.error(`[Watchdog] Failed check on room ${room.id}: ${err?.message}`);
+      }
+    }
+  }
+
+  async recoverRoomFromStall(roomId: string) {
+    this.logger.warn(`[Recovery] Attempting emergency recovery for stalled room ${roomId}...`);
+    try {
+      await this.withLock(roomId, async () => {
+        const room = await this.prisma.room.findUnique({
+          where: { id: roomId },
+          include: { teams: true },
+        });
+        if (!room || room.status !== 'AUCTION_ACTIVE') return;
+
+        this.clearTimer(roomId);
+
+        if (room.currentAuctionPlayerId) {
+          const ap = await this.prisma.auctionPlayer.findUnique({
+            where: { id: room.currentAuctionPlayerId },
+          });
+
+          if (ap && ap.status === 'NOMINATED') {
+            this.logger.log(`[Recovery] Room ${roomId}: Finalizing stuck lot ${ap.id}`);
+            await this.handleLotCompletionInternal(roomId, undefined, ap.id);
+            return;
+          }
+        }
+
+        this.logger.log(`[Recovery] Room ${roomId}: Triggering next upcoming player nomination.`);
+        await this.nominateNextUpcomingPlayerInternal(roomId);
+      });
+    } catch (err: any) {
+      this.logger.error(`[Recovery] Emergency recovery for room ${roomId} encountered error: ${err?.message}`);
+    }
+  }
+
+
 
   async reconcileActiveAuctions() {
     const activeRooms = await this.prisma.room.findMany({
@@ -103,7 +277,7 @@ export class AuctionEngine implements OnApplicationBootstrap {
               ? Math.max(1, Math.ceil((endsAt - now) / 1000))
               : room.bidTimerSeconds;
             this.logger.log(`Resuming countdown timer for room ${room.id} with ${remainingSec}s remaining.`);
-            this.startTimer(room.id, remainingSec);
+            this.startTimer(room.id, remainingSec, nominatedPlayer.id);
           }
         } else {
           this.logger.log(`Room ${room.id} active with no nominated lot. Triggering nomination of next upcoming player.`);
@@ -138,20 +312,46 @@ export class AuctionEngine implements OnApplicationBootstrap {
     }
   }
 
-  private async acquireLock(roomId: string): Promise<() => void> {
-    const prev = this.roomLocks.get(roomId) || Promise.resolve();
-    let releaseLock: () => void = () => {};
-    const next = new Promise<void>((resolve) => {
-      releaseLock = resolve;
-    });
-    this.roomLocks.set(roomId, prev.then(() => next, () => next));
-    await prev;
+  private async acquireLock(roomId: string, timeoutMs = 15000): Promise<() => void> {
+    const currentLocks = this.lockStorage.getStore();
+    if (currentLocks && currentLocks.has(roomId)) {
+      return () => {};
+    }
+
+    let mutex = this.roomMutexes.get(roomId);
+    if (!mutex) {
+      mutex = new RoomMutex();
+      this.roomMutexes.set(roomId, mutex);
+    }
+
+    const release = await mutex.acquire(timeoutMs);
+    let released = false;
     return () => {
-      releaseLock();
-      if (this.roomLocks.get(roomId) === next) {
-        this.roomLocks.delete(roomId);
+      if (!released) {
+        released = true;
+        release();
+        if (mutex.isIdle()) {
+          this.roomMutexes.delete(roomId);
+        }
       }
     };
+  }
+
+  public async withLock<T>(roomId: string, action: () => Promise<T>, timeoutMs = 15000): Promise<T> {
+    const currentLocks = this.lockStorage.getStore();
+    if (currentLocks && currentLocks.has(roomId)) {
+      return await action();
+    }
+
+    const release = await this.acquireLock(roomId, timeoutMs);
+    const newLocks = new Set(currentLocks || []);
+    newLocks.add(roomId);
+
+    try {
+      return await this.lockStorage.run(newLocks, action);
+    } finally {
+      release();
+    }
   }
 
   calculateNextValidBid(currentBid: number, basePrice: number): { nextBid: number; increment: number } {
@@ -159,8 +359,7 @@ export class AuctionEngine implements OnApplicationBootstrap {
   }
 
   async startAuction(roomId: string, hostUserId: string) {
-    const release = await this.acquireLock(roomId);
-    try {
+    return await this.withLock(roomId, async () => {
       const room = await this.verifyHost(roomId, hostUserId);
 
       // If auction is already running, avoid restarting or double nomination
@@ -189,19 +388,14 @@ export class AuctionEngine implements OnApplicationBootstrap {
       }
 
       return { success: true };
-    } finally {
-      release();
-    }
+    });
   }
 
   async nominatePlayer(roomId: string, hostUserId: string, auctionPlayerId: string) {
-    const release = await this.acquireLock(roomId);
-    try {
+    return await this.withLock(roomId, async () => {
       const room = await this.verifyHost(roomId, hostUserId);
       return await this.nominatePlayerInternal(room.id, auctionPlayerId);
-    } finally {
-      release();
-    }
+    });
   }
 
   private async nominatePlayerInternal(roomId: string, auctionPlayerId: string) {
@@ -262,15 +456,14 @@ export class AuctionEngine implements OnApplicationBootstrap {
 
     this.broadcast('player_nominated', roomId, payload);
     if (!room.isPaused) {
-      this.startTimer(roomId, room.bidTimerSeconds);
+      this.startTimer(roomId, room.bidTimerSeconds, auctionPlayer.id);
     }
 
     return payload;
   }
 
   async placeBid(roomId: string, userId: string, teamId: string, customAmount?: number) {
-    const release = await this.acquireLock(roomId);
-    try {
+    return await this.withLock(roomId, async () => {
       const room = await this.prisma.room.findUnique({
         where: { id: roomId },
         include: {
@@ -480,20 +673,21 @@ export class AuctionEngine implements OnApplicationBootstrap {
         activeTimer.totalSeconds = remaining;
         activeTimer.pauseRemainingMs = remaining * 1000;
       } else {
-        this.startTimer(roomId, remaining);
+        this.startTimer(roomId, remaining, auctionPlayer.id);
       }
 
       return broadcastData;
-    } finally {
-      release();
-    }
+    });
   }
 
-  private startTimer(roomId: string, seconds: number) {
+  private startTimer(roomId: string, seconds: number, lotId?: string) {
     this.clearTimer(roomId);
 
+    const currentGen = (this.timerGenerations.get(roomId) || 0) + 1;
+    this.timerGenerations.set(roomId, currentGen);
+
     const speed = this.roomSpeeds.get(roomId) || 1.0;
-    const tickIntervalMs = Math.round(1000 / speed);
+    const tickIntervalMs = Math.max(250, Math.round(1000 / speed));
     const durationSeconds = Math.max(1, Math.round(seconds));
     const now = Date.now();
     const timerEndsAt = now + Math.round((durationSeconds * 1000) / speed);
@@ -507,26 +701,39 @@ export class AuctionEngine implements OnApplicationBootstrap {
       totalSeconds: durationSeconds,
       isPaused: false,
       speedMultiplier: speed,
+      lotId: lotId || null,
+      generation: currentGen,
     };
 
     timerObj.intervalRef = setInterval(async () => {
+      // 1. Generation check: if a new timer started, self-terminate immediately
+      if (this.timerGenerations.get(roomId) !== currentGen) {
+        clearInterval(timerObj.intervalRef);
+        return;
+      }
+
       if (timerObj.isPaused) return;
 
-      timerObj.remainingSeconds = Math.max(0, timerObj.remainingSeconds - 1);
-      const remaining = timerObj.remainingSeconds;
+      // 2. Authoritative deadline-based countdown (immune to event-loop lag and drift)
+      const currentNow = Date.now();
+      const remainingMs = timerObj.timerEndsAt - currentNow;
+      const remaining = Math.max(0, Math.ceil((remainingMs * speed) / 1000));
+      timerObj.remainingSeconds = remaining;
 
       this.broadcast('timer_tick', roomId, {
         remainingSeconds: remaining,
         speedMultiplier: speed,
-        serverTime: Date.now(),
+        serverTime: currentNow,
       });
 
       if (remaining <= 0) {
-        this.clearTimer(roomId);
+        clearInterval(timerObj.intervalRef);
+        timerObj.intervalRef = null;
+
         try {
-          await this.handleLotCompletion(roomId);
+          await this.completeLotWithRetry(roomId, currentGen, timerObj.lotId);
         } catch (err: any) {
-          this.logger.error(`Error completing lot for room ${roomId}: ${err?.message}`);
+          this.logger.error(`[Room: ${roomId}, Lot: ${timerObj.lotId}] Error completing lot: ${err?.message}`);
         }
       }
     }, tickIntervalMs);
@@ -534,281 +741,369 @@ export class AuctionEngine implements OnApplicationBootstrap {
     this.timers.set(roomId, timerObj);
   }
 
+  private async completeLotWithRetry(roomId: string, expectedGen: number, expectedLotId?: string | null) {
+    let completed = false;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        await this.withLock(roomId, async () => {
+          await this.handleLotCompletionInternal(roomId, expectedGen, expectedLotId);
+        });
+        completed = true;
+        break;
+      } catch (err: any) {
+        this.logger.error(`[Room: ${roomId}, Attempt: ${attempt}] Failed to complete lot: ${err?.message}`);
+        if (attempt < 3) {
+          await new Promise((res) => setTimeout(res, 500 * attempt));
+        }
+      }
+    }
+
+    if (!completed) {
+      this.logger.error(`[Room: ${roomId}] All attempts to complete lot failed. Triggering recovery.`);
+      await this.recoverRoomFromStall(roomId);
+    }
+  }
+
   private clearTimer(roomId: string) {
+    this.timerGenerations.set(roomId, (this.timerGenerations.get(roomId) || 0) + 1);
+
     const existing = this.timers.get(roomId);
     if (existing) {
       if (existing.intervalRef) {
         clearInterval(existing.intervalRef);
+        existing.intervalRef = null;
       }
       if (existing.nextLotTimeoutRef) {
         clearTimeout(existing.nextLotTimeoutRef);
+        existing.nextLotTimeoutRef = null;
       }
     }
     this.timers.delete(roomId);
   }
 
   async handleLotCompletion(roomId: string) {
-    const release = await this.acquireLock(roomId);
-    try {
-      const room = await this.prisma.room.findUnique({
-        where: { id: roomId },
-        include: { teams: true },
-      });
+    return await this.withLock(roomId, async () => {
+      await this.handleLotCompletionInternal(roomId);
+    });
+  }
 
-      if (!room || !room.currentAuctionPlayerId) return;
+  private async handleLotCompletionInternal(roomId: string, expectedGen?: number, expectedLotId?: string | null) {
+    const room = await this.prisma.room.findUnique({
+      where: { id: roomId },
+      include: { teams: true },
+    });
 
-      const auctionPlayer = await this.prisma.auctionPlayer.findUnique({
-        where: { id: room.currentAuctionPlayerId },
-        include: { player: true },
-      });
+    if (!room || !room.currentAuctionPlayerId) {
+      this.logger.warn(`[Room: ${roomId}] handleLotCompletion called but no currentAuctionPlayerId found.`);
+      return;
+    }
 
-      if (!auctionPlayer) return;
+    if (expectedLotId && room.currentAuctionPlayerId !== expectedLotId) {
+      this.logger.warn(`[Room: ${roomId}] Expected lot ${expectedLotId} but room is on ${room.currentAuctionPlayerId}. Stale completion ignored.`);
+      return;
+    }
 
-      if (room.currentBidTeamId && room.currentBidAmount && room.currentBidAmount > 0) {
-        const winningTeam = room.teams.find((t) => t.id === room.currentBidTeamId);
-        if (!winningTeam) return;
+    // Check if timer was extended by a late bid
+    if (room.timerEndsAt && room.timerEndsAt.getTime() > Date.now() + 500) {
+      const remainingSec = Math.max(1, Math.ceil((room.timerEndsAt.getTime() - Date.now()) / 1000));
+      this.logger.log(`[Room: ${roomId}] Late bid extended timer to ${room.timerEndsAt.toISOString()} (${remainingSec}s remaining). Resuming countdown.`);
+      this.startTimer(roomId, remainingSec, room.currentAuctionPlayerId);
+      return;
+    }
 
-        const soldPrice = room.currentBidAmount;
+    const auctionPlayer = await this.prisma.auctionPlayer.findUnique({
+      where: { id: room.currentAuctionPlayerId },
+      include: { player: true },
+    });
 
-        const { squadMember } = await this.prisma.$transaction(async (tx) => {
-          await tx.team.update({
-            where: { id: winningTeam.id },
-            data: {
-              currentPurse: { decrement: soldPrice },
-              totalPlayers: { increment: 1 },
-              overseasCount: auctionPlayer.player.isOverseas
-                ? { increment: 1 }
-                : undefined,
-            },
-          });
+    if (!auctionPlayer) return;
 
-          const createdSquadMember = await tx.squadMember.create({
-            data: {
-              teamId: winningTeam.id,
-              auctionPlayerId: auctionPlayer.id,
-              playerId: auctionPlayer.playerId,
-              purchasePrice: soldPrice,
-            },
-            include: { player: true },
-          });
+    if (auctionPlayer.status !== 'NOMINATED') {
+      this.logger.warn(`[Room: ${roomId}] Player ${auctionPlayer.id} already has status ${auctionPlayer.status}. Skipping duplicate resolution.`);
+      return;
+    }
 
-          await tx.auctionPlayer.update({
-            where: { id: auctionPlayer.id },
-            data: {
-              status: 'SOLD',
-              soldPrice,
-              soldToTeamId: winningTeam.id,
-              soldAt: new Date(),
-            },
-          });
+    this.clearTimer(roomId);
 
-          await tx.room.update({
-            where: { id: roomId },
-            data: {
-              currentAuctionPlayerId: null,
-              currentBidAmount: 0,
-              currentBidTeamId: null,
-            },
-          });
+    if (room.currentBidTeamId && room.currentBidAmount && room.currentBidAmount > 0) {
+      const winningTeam = room.teams.find((t) => t.id === room.currentBidTeamId);
+      if (!winningTeam) return;
 
-          await tx.auctionAuditLog.create({
-            data: {
-              roomId,
-              action: 'PLAYER_SOLD',
-              details: JSON.stringify({
-                player: auctionPlayer.player.name,
-                team: winningTeam.name,
-                amount: soldPrice,
-              }),
-            },
-          });
+      const soldPrice = room.currentBidAmount;
 
-          return { squadMember: createdSquadMember };
+      const { squadMember } = await this.prisma.$transaction(async (tx) => {
+        await tx.team.update({
+          where: { id: winningTeam.id },
+          data: {
+            currentPurse: { decrement: soldPrice },
+            totalPlayers: { increment: 1 },
+            overseasCount: auctionPlayer.player.isOverseas
+              ? { increment: 1 }
+              : undefined,
+          },
         });
 
-        this.broadcast('player_sold', roomId, {
-          auctionPlayer: {
-            ...auctionPlayer,
+        const createdSquadMember = await tx.squadMember.create({
+          data: {
+            teamId: winningTeam.id,
+            auctionPlayerId: auctionPlayer.id,
+            playerId: auctionPlayer.playerId,
+            purchasePrice: soldPrice,
+          },
+          include: { player: true },
+        });
+
+        await tx.auctionPlayer.update({
+          where: { id: auctionPlayer.id },
+          data: {
             status: 'SOLD',
             soldPrice,
             soldToTeamId: winningTeam.id,
             soldAt: new Date(),
           },
-          winningTeam,
-          soldPrice,
-          squadMember,
-          serverTime: Date.now(),
         });
 
-        const roomState = await this.prisma.room.findUnique({
+        await tx.room.update({
           where: { id: roomId },
-          select: { isPaused: true, status: true },
-        });
-
-        if (roomState && !roomState.isPaused && roomState.status === 'AUCTION_ACTIVE') {
-          const nextTimeout = setTimeout(async () => {
-            try {
-              await this.nominateNextUpcomingPlayer(roomId);
-            } catch (err: any) {
-              this.logger.error(`Error nominating next upcoming player: ${err?.message}`);
-            }
-          }, 5000);
-          this.timers.set(roomId, {
-            roomId,
-            intervalRef: null,
-            nextLotTimeoutRef: nextTimeout,
-            timerEndsAt: 0,
-            remainingSeconds: 0,
-            totalSeconds: 0,
-            isPaused: false,
-            isTransitioning: true,
-          });
-        } else {
-          this.timers.set(roomId, {
-            roomId,
-            intervalRef: null,
-            nextLotTimeoutRef: null,
-            timerEndsAt: 0,
-            remainingSeconds: 0,
-            totalSeconds: 0,
-            isPaused: true,
-            isTransitioning: true,
-          });
-        }
-      } else {
-        await this.prisma.$transaction(async (tx) => {
-          await tx.auctionPlayer.update({
-            where: { id: auctionPlayer.id },
-            data: { status: 'UNSOLD', soldAt: new Date() },
-          });
-
-          await tx.room.update({
-            where: { id: roomId },
-            data: {
-              currentAuctionPlayerId: null,
-              currentBidAmount: 0,
-              currentBidTeamId: null,
-            },
-          });
-
-          await tx.auctionAuditLog.create({
-            data: {
-              roomId,
-              action: 'PLAYER_UNSOLD',
-              details: JSON.stringify({
-                player: auctionPlayer.player.name,
-                basePrice: auctionPlayer.player.basePrice,
-              }),
-            },
-          });
-        });
-
-        this.broadcast('player_unsold', roomId, {
-          auctionPlayer: {
-            ...auctionPlayer,
-            status: 'UNSOLD',
-            soldAt: new Date(),
+          data: {
+            currentAuctionPlayerId: null,
+            currentBidAmount: 0,
+            currentBidTeamId: null,
           },
-          serverTime: Date.now(),
         });
 
-        const roomState = await this.prisma.room.findUnique({
-          where: { id: roomId },
-          select: { isPaused: true, status: true },
+        await tx.auctionAuditLog.create({
+          data: {
+            roomId,
+            action: 'PLAYER_SOLD',
+            details: JSON.stringify({
+              player: auctionPlayer.player.name,
+              team: winningTeam.name,
+              amount: soldPrice,
+            }),
+          },
         });
 
-        if (roomState && !roomState.isPaused && roomState.status === 'AUCTION_ACTIVE') {
-          const nextTimeout = setTimeout(async () => {
-            try {
-              await this.nominateNextUpcomingPlayer(roomId);
-            } catch (err: any) {
-              this.logger.error(`Error nominating next upcoming player: ${err?.message}`);
-            }
-          }, 3000);
-          this.timers.set(roomId, {
-            roomId,
-            intervalRef: null,
-            nextLotTimeoutRef: nextTimeout,
-            timerEndsAt: 0,
-            remainingSeconds: 0,
-            totalSeconds: 0,
-            isPaused: false,
-            isTransitioning: true,
-          });
-        } else {
-          this.timers.set(roomId, {
-            roomId,
-            intervalRef: null,
-            nextLotTimeoutRef: null,
-            timerEndsAt: 0,
-            remainingSeconds: 0,
-            totalSeconds: 0,
-            isPaused: true,
-            isTransitioning: true,
-          });
-        }
+        return { squadMember: createdSquadMember };
+      });
+
+      this.broadcast('player_sold', roomId, {
+        auctionPlayer: {
+          ...auctionPlayer,
+          status: 'SOLD',
+          soldPrice,
+          soldToTeamId: winningTeam.id,
+          soldAt: new Date(),
+        },
+        winningTeam,
+        soldPrice,
+        squadMember,
+        serverTime: Date.now(),
+      });
+
+      const roomState = await this.prisma.room.findUnique({
+        where: { id: roomId },
+        select: { isPaused: true, status: true },
+      });
+
+      if (roomState && !roomState.isPaused && roomState.status === 'AUCTION_ACTIVE') {
+        const nextTimeout = setTimeout(async () => {
+          try {
+            await this.nominateNextUpcomingPlayer(roomId);
+          } catch (err: any) {
+            this.logger.error(`Error nominating next upcoming player: ${err?.message}`);
+          }
+        }, 4000);
+        this.timers.set(roomId, {
+          roomId,
+          intervalRef: null,
+          nextLotTimeoutRef: nextTimeout,
+          timerEndsAt: 0,
+          remainingSeconds: 0,
+          totalSeconds: 0,
+          isPaused: false,
+          isTransitioning: true,
+        });
+      } else {
+        this.timers.set(roomId, {
+          roomId,
+          intervalRef: null,
+          nextLotTimeoutRef: null,
+          timerEndsAt: 0,
+          remainingSeconds: 0,
+          totalSeconds: 0,
+          isPaused: true,
+          isTransitioning: true,
+        });
       }
-    } finally {
-      release();
+    } else {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.auctionPlayer.update({
+          where: { id: auctionPlayer.id },
+          data: { status: 'UNSOLD', soldAt: new Date() },
+        });
+
+        await tx.room.update({
+          where: { id: roomId },
+          data: {
+            currentAuctionPlayerId: null,
+            currentBidAmount: 0,
+            currentBidTeamId: null,
+          },
+        });
+
+        await tx.auctionAuditLog.create({
+          data: {
+            roomId,
+            action: 'PLAYER_UNSOLD',
+            details: JSON.stringify({
+              player: auctionPlayer.player.name,
+              basePrice: auctionPlayer.player.basePrice,
+            }),
+          },
+        });
+      });
+
+      this.broadcast('player_unsold', roomId, {
+        auctionPlayer: {
+          ...auctionPlayer,
+          status: 'UNSOLD',
+          soldAt: new Date(),
+        },
+        serverTime: Date.now(),
+      });
+
+      const roomState = await this.prisma.room.findUnique({
+        where: { id: roomId },
+        select: { isPaused: true, status: true },
+      });
+
+      if (roomState && !roomState.isPaused && roomState.status === 'AUCTION_ACTIVE') {
+        const nextTimeout = setTimeout(async () => {
+          try {
+            await this.nominateNextUpcomingPlayer(roomId);
+          } catch (err: any) {
+            this.logger.error(`Error nominating next upcoming player: ${err?.message}`);
+          }
+        }, 2500);
+        this.timers.set(roomId, {
+          roomId,
+          intervalRef: null,
+          nextLotTimeoutRef: nextTimeout,
+          timerEndsAt: 0,
+          remainingSeconds: 0,
+          totalSeconds: 0,
+          isPaused: false,
+          isTransitioning: true,
+        });
+      } else {
+        this.timers.set(roomId, {
+          roomId,
+          intervalRef: null,
+          nextLotTimeoutRef: null,
+          timerEndsAt: 0,
+          remainingSeconds: 0,
+          totalSeconds: 0,
+          isPaused: true,
+          isTransitioning: true,
+        });
+      }
     }
   }
 
   async nominateNextUpcomingPlayer(roomId: string) {
-    const release = await this.acquireLock(roomId);
-    try {
-      const room = await this.prisma.room.findUnique({
-        where: { id: roomId },
+    return await this.withLock(roomId, async () => {
+      await this.nominateNextUpcomingPlayerInternal(roomId);
+    });
+  }
+
+  private async nominateNextUpcomingPlayerInternal(roomId: string) {
+    const room = await this.prisma.room.findUnique({
+      where: { id: roomId },
+    });
+
+    if (!room || room.isPaused || room.status !== 'AUCTION_ACTIVE') {
+      this.logger.log(`Skipping auto-nomination for room ${roomId}: room is paused or not active`);
+      return;
+    }
+
+    const currentlyNominated = await this.prisma.auctionPlayer.findFirst({
+      where: { roomId, status: 'NOMINATED' },
+    });
+    if (currentlyNominated) {
+      this.logger.log(`Skipping auto-nomination for room ${roomId}: lot ${currentlyNominated.id} already active`);
+      return;
+    }
+
+    const nextPlayer = await this.prisma.auctionPlayer.findFirst({
+      where: { roomId, status: 'UPCOMING' },
+      orderBy: { lotNumber: 'asc' },
+    });
+
+    if (nextPlayer) {
+      await this.nominatePlayerInternal(roomId, nextPlayer.id);
+      return;
+    }
+
+    // No more UPCOMING players in current pool!
+    // Check franchise capacity and unsold pool
+    const allTeams = await this.prisma.team.findMany({
+      where: { roomId },
+      include: { squad: true },
+    });
+    const allSquadsFull = allTeams.length > 0 && allTeams.every((t) => (t.squad?.length || 0) >= room.maxSquad);
+
+    const unsoldPlayers = await this.prisma.auctionPlayer.findMany({
+      where: { roomId, status: 'UNSOLD' },
+    });
+
+    const currentRound = room.currentRound || 1;
+
+    if (unsoldPlayers.length > 0 && !allSquadsFull && currentRound < 5) {
+      this.logger.log(`Room ${roomId}: Round ${currentRound} complete with ${unsoldPlayers.length} unsold players. Scheduling Accelerated Round.`);
+
+      this.broadcast('round_completed', roomId, {
+        round: currentRound,
+        unsoldAvailable: unsoldPlayers.length,
+        message: `Round ${currentRound} complete! ${unsoldPlayers.length} unsold players returning for Accelerated Blitz Round in 8 seconds!`,
+        intermissionSeconds: 8,
       });
 
-      if (!room || room.isPaused || room.status !== 'AUCTION_ACTIVE') {
-        this.logger.log(`Skipping auto-nomination for room ${roomId}: room is paused or not active`);
-        return;
-      }
+      this.clearTimer(roomId);
 
-      // Check if a player is already currently NOMINATED to prevent duplicate lot nomination
-      const currentlyNominated = await this.prisma.auctionPlayer.findFirst({
-        where: { roomId, status: 'NOMINATED' },
-      });
-      if (currentlyNominated) {
-        this.logger.log(`Skipping auto-nomination for room ${roomId}: lot ${currentlyNominated.id} already active`);
-        return;
-      }
-
-      const nextPlayer = await this.prisma.auctionPlayer.findFirst({
-        where: { roomId, status: 'UPCOMING' },
-        orderBy: { lotNumber: 'asc' },
-      });
-
-      if (nextPlayer) {
-        await this.nominatePlayerInternal(roomId, nextPlayer.id);
-      } else {
-        const unsoldPlayer = await this.prisma.auctionPlayer.findFirst({
-          where: { roomId, status: 'UNSOLD' },
-        });
-
-        if (unsoldPlayer) {
-          this.broadcast('round_completed', roomId, {
-            message: 'Round 1 complete! Unsold players are available in accelerated rounds.',
-          });
-        } else {
-          await this.prisma.room.update({
-            where: { id: roomId },
-            data: { status: 'COMPLETED' },
-          });
-
-          this.broadcast('auction_completed', roomId, {
-            message: 'The IPL Mega Auction is completed! Congratulations to all franchises!',
-          });
+      const intermissionTimeout = setTimeout(async () => {
+        try {
+          this.logger.log(`Room ${roomId}: Auto-triggering Accelerated Round ${currentRound + 1}...`);
+          await this.startAcceleratedRound(roomId, room.hostId, 15);
+        } catch (err: any) {
+          this.logger.error(`Failed to auto-start accelerated round for room ${roomId}: ${err?.message}`);
         }
-      }
-    } finally {
-      release();
+      }, 8000);
+
+      this.timers.set(roomId, {
+        roomId,
+        intervalRef: null,
+        nextLotTimeoutRef: intermissionTimeout,
+        timerEndsAt: Date.now() + 8000,
+        remainingSeconds: 8,
+        totalSeconds: 8,
+        isPaused: false,
+        isTransitioning: true,
+      });
+    } else {
+      await this.prisma.room.update({
+        where: { id: roomId },
+        data: { status: 'COMPLETED', currentAuctionPlayerId: null },
+      });
+
+      this.broadcast('auction_completed', roomId, {
+        message: 'The IPL Mega Auction is completed! Congratulations to all franchises!',
+      });
     }
   }
 
   async pauseAuction(roomId: string, hostUserId: string) {
-    const release = await this.acquireLock(roomId);
-    try {
+    return await this.withLock(roomId, async () => {
       const room = await this.verifyHost(roomId, hostUserId);
       const hostMember = room.members?.find((m) => m.userId === hostUserId);
       const hostName = hostMember?.user?.username || 'Host';
@@ -841,14 +1136,11 @@ export class AuctionEngine implements OnApplicationBootstrap {
       });
 
       return { paused: true, remainingSeconds: remainingSec, hostName };
-    } finally {
-      release();
-    }
+    });
   }
 
   async resumeAuction(roomId: string, hostUserId: string) {
-    const release = await this.acquireLock(roomId);
-    try {
+    return await this.withLock(roomId, async () => {
       const room = await this.verifyHost(roomId, hostUserId);
       const hostMember = room.members?.find((m) => m.userId === hostUserId);
       const hostName = hostMember?.user?.username || 'Host';
@@ -890,77 +1182,54 @@ export class AuctionEngine implements OnApplicationBootstrap {
       }
 
       return { resumed: true, remainingSeconds: remainingSec, hostName };
-    } finally {
-      release();
-    }
+    });
   }
 
   async setAuctionSpeed(roomId: string, hostUserId: string, targetSpeed?: number) {
-    const room = await this.verifyHost(roomId, hostUserId);
-    const hostMember = room.members?.find((m) => m.userId === hostUserId);
-    const hostName = hostMember?.user?.username || 'Host';
+    return await this.withLock(roomId, async () => {
+      const room = await this.verifyHost(roomId, hostUserId);
+      const hostMember = room.members?.find((m) => m.userId === hostUserId);
+      const hostName = hostMember?.user?.username || 'Host';
 
-    const currentSpeed = this.roomSpeeds.get(room.id) || 1.0;
-    let nextSpeed: number;
+      const currentSpeed = this.roomSpeeds.get(room.id) || 1.0;
+      let nextSpeed: number;
 
-    if (targetSpeed !== undefined && targetSpeed > 0) {
-      nextSpeed = targetSpeed;
-    } else {
-      // Cycle: 1.0x -> 1.25x -> 1.5x -> 2.0x -> 1.0x
-      if (currentSpeed < 1.1) {
-        nextSpeed = 1.25;
-      } else if (currentSpeed < 1.35) {
-        nextSpeed = 1.5;
-      } else if (currentSpeed < 1.75) {
-        nextSpeed = 2.0;
+      if (targetSpeed !== undefined && targetSpeed > 0) {
+        nextSpeed = targetSpeed;
       } else {
-        nextSpeed = 1.0;
-      }
-    }
-
-    this.roomSpeeds.set(room.id, nextSpeed);
-
-    // If timer is active, reconfigure interval at new speed
-    const timer = this.timers.get(room.id);
-    if (timer && timer.intervalRef) {
-      clearInterval(timer.intervalRef);
-      timer.speedMultiplier = nextSpeed;
-      const tickIntervalMs = Math.round(1000 / nextSpeed);
-
-      timer.intervalRef = setInterval(async () => {
-        if (timer.isPaused) return;
-
-        timer.remainingSeconds = Math.max(0, timer.remainingSeconds - 1);
-
-        this.broadcast('timer_tick', room.id, {
-          remainingSeconds: timer.remainingSeconds,
-          speedMultiplier: nextSpeed,
-          serverTime: Date.now(),
-        });
-
-        if (timer.remainingSeconds <= 0) {
-          this.clearTimer(room.id);
-          try {
-            await this.handleLotCompletion(room.id);
-          } catch (err: any) {
-            this.logger.error(`Error completing lot for room ${room.id}: ${err?.message}`);
-          }
+        // Cycle: 1.0x -> 1.25x -> 1.5x -> 2.0x -> 1.0x
+        if (currentSpeed < 1.1) {
+          nextSpeed = 1.25;
+        } else if (currentSpeed < 1.35) {
+          nextSpeed = 1.5;
+        } else if (currentSpeed < 1.75) {
+          nextSpeed = 2.0;
+        } else {
+          nextSpeed = 1.0;
         }
-      }, tickIntervalMs);
-    }
+      }
 
-    const message = nextSpeed === 1.0
-      ? `⚡ Host (${hostName}) reset speed to Normal (1x)`
-      : `⚡ Host (${hostName}) set auction speed to ${nextSpeed}x Blitz!`;
+      this.roomSpeeds.set(room.id, nextSpeed);
 
-    this.broadcast('auction_speed_changed', room.id, {
-      speedMultiplier: nextSpeed,
-      hostName,
-      message,
-      serverTime: Date.now(),
+      // If timer is active and running, restart it cleanly with updated speed
+      const timer = this.timers.get(room.id);
+      if (timer && timer.intervalRef && !timer.isPaused) {
+        this.startTimer(room.id, timer.remainingSeconds, timer.lotId || undefined);
+      }
+
+      const message = nextSpeed === 1.0
+        ? `⚡ Host (${hostName}) reset speed to Normal (1x)`
+        : `⚡ Host (${hostName}) set auction speed to ${nextSpeed}x Blitz!`;
+
+      this.broadcast('auction_speed_changed', room.id, {
+        speedMultiplier: nextSpeed,
+        hostName,
+        message,
+        serverTime: Date.now(),
+      });
+
+      return { success: true, speedMultiplier: nextSpeed, message, hostName };
     });
-
-    return { success: true, speedMultiplier: nextSpeed, message, hostName };
   }
 
   getRoomSpeed(roomId: string): number {
@@ -968,27 +1237,30 @@ export class AuctionEngine implements OnApplicationBootstrap {
   }
 
   async sellNow(roomId: string, hostUserId: string) {
-    const room = await this.verifyHost(roomId, hostUserId);
-    this.clearTimer(room.id);
-    await this.handleLotCompletion(room.id);
-    return { success: true };
+    return await this.withLock(roomId, async () => {
+      const room = await this.verifyHost(roomId, hostUserId);
+      this.clearTimer(room.id);
+      await this.handleLotCompletionInternal(room.id);
+      return { success: true };
+    });
   }
 
   async markUnsoldNow(roomId: string, hostUserId: string) {
-    const room = await this.verifyHost(roomId, hostUserId);
-    await this.prisma.room.update({
-      where: { id: room.id },
-      data: { currentBidAmount: 0, currentBidTeamId: null },
-    });
+    return await this.withLock(roomId, async () => {
+      const room = await this.verifyHost(roomId, hostUserId);
+      await this.prisma.room.update({
+        where: { id: room.id },
+        data: { currentBidAmount: 0, currentBidTeamId: null },
+      });
 
-    this.clearTimer(room.id);
-    await this.handleLotCompletion(room.id);
-    return { success: true };
+      this.clearTimer(room.id);
+      await this.handleLotCompletionInternal(room.id);
+      return { success: true };
+    });
   }
 
   async endAuction(roomId: string, hostUserId: string) {
-    const release = await this.acquireLock(roomId);
-    try {
+    return await this.withLock(roomId, async () => {
       const room = await this.verifyHost(roomId, hostUserId);
       const hostMember = room.members?.find((m) => m.userId === hostUserId);
       const hostName = hostMember?.user?.username || 'Host';
@@ -1034,7 +1306,7 @@ export class AuctionEngine implements OnApplicationBootstrap {
       // 3. Mark room as COMPLETED and unpause
       const updatedRoom = await this.prisma.room.update({
         where: { id: room.id },
-        data: { status: 'COMPLETED', isPaused: false },
+        data: { status: 'COMPLETED', isPaused: false, currentAuctionPlayerId: null },
         include: {
           teams: true,
           members: { include: { user: { select: { id: true, username: true } } } },
@@ -1057,44 +1329,51 @@ export class AuctionEngine implements OnApplicationBootstrap {
       });
       this.broadcast('room_sync', room.id, { room: updatedRoom });
 
+      this.timerGenerations.delete(room.id);
+      this.roomSpeeds.delete(room.id);
+      this.timers.delete(room.id);
+
       return { success: true, status: 'COMPLETED', room: updatedRoom, hostName };
-    } finally {
-      release();
-    }
+    });
   }
 
   async skipPlayer(roomId: string, hostUserId: string) {
-    const room = await this.verifyHost(roomId, hostUserId);
-    const hostMember = room.members?.find((m) => m.userId === hostUserId);
-    const hostName = hostMember?.user?.username || 'Host';
+    return await this.withLock(roomId, async () => {
+      const room = await this.verifyHost(roomId, hostUserId);
+      const hostMember = room.members?.find((m) => m.userId === hostUserId);
+      const hostName = hostMember?.user?.username || 'Host';
 
-    this.clearTimer(room.id);
-    let skippedPlayerName = 'current player';
-    if (room.currentAuctionPlayerId) {
-      const ap = await this.prisma.auctionPlayer.update({
-        where: { id: room.currentAuctionPlayerId },
-        data: { status: 'PASSED', soldAt: new Date() },
-        include: { player: true },
-      });
-      if (ap?.player?.name) {
-        skippedPlayerName = ap.player.name;
+      this.clearTimer(room.id);
+      let skippedPlayerName = 'current player';
+      if (room.currentAuctionPlayerId) {
+        const ap = await this.prisma.auctionPlayer.update({
+          where: { id: room.currentAuctionPlayerId },
+          data: { status: 'PASSED', soldAt: new Date() },
+          include: { player: true },
+        });
+        if (ap?.player?.name) {
+          skippedPlayerName = ap.player.name;
+        }
+        await this.prisma.room.update({
+          where: { id: room.id },
+          data: { currentAuctionPlayerId: null, currentBidAmount: 0, currentBidTeamId: null },
+        });
       }
-    }
 
-    this.broadcast('player_skipped', room.id, {
-      hostName,
-      playerName: skippedPlayerName,
-      message: `⏭️ Host (${hostName}) skipped ${skippedPlayerName}`,
-      serverTime: Date.now(),
+      this.broadcast('player_skipped', room.id, {
+        hostName,
+        playerName: skippedPlayerName,
+        message: `⏭️ Host (${hostName}) skipped ${skippedPlayerName}`,
+        serverTime: Date.now(),
+      });
+
+      await this.nominateNextUpcomingPlayerInternal(room.id);
+      return { success: true, hostName, playerName: skippedPlayerName };
     });
-
-    await this.nominateNextUpcomingPlayer(room.id);
-    return { success: true, hostName, playerName: skippedPlayerName };
   }
 
   async undoLastAction(roomId: string, hostUserId: string) {
-    const release = await this.acquireLock(roomId);
-    try {
+    return await this.withLock(roomId, async () => {
       const room = await this.verifyHost(roomId, hostUserId);
       const hostMember = room.members?.find((m) => m.userId === hostUserId);
       const hostName = hostMember?.user?.username || 'Host';
@@ -1173,15 +1452,15 @@ export class AuctionEngine implements OnApplicationBootstrap {
 
       await this.nominatePlayerInternal(roomId, lastFinalized.id);
       return { success: true, hostName };
-    } finally {
-      release();
-    }
+    });
   }
 
   async startAcceleratedRound(roomId: string, hostUserId: string, timerSeconds = 15) {
-    const release = await this.acquireLock(roomId);
-    try {
+    return await this.withLock(roomId, async () => {
       const room = await this.verifyHost(roomId, hostUserId);
+
+      // Cancel any pending intermission timers
+      this.clearTimer(roomId);
 
       // 1. Find all UNSOLD players
       const unsoldPlayers = await this.prisma.auctionPlayer.findMany({
@@ -1228,6 +1507,7 @@ export class AuctionEngine implements OnApplicationBootstrap {
           status: 'AUCTION_ACTIVE',
           bidTimerSeconds: timerSeconds,
           currentRound: nextRound,
+          isPaused: false,
         },
         include: {
           teams: { include: { squad: { include: { player: true } } } },
@@ -1243,15 +1523,13 @@ export class AuctionEngine implements OnApplicationBootstrap {
         message: `Accelerated Auction Round ${nextRound} has started! ${recalledCount} unsold players returned to the pool with a ${timerSeconds}s blitz clock!`,
       });
 
-      // 4. If no player is currently nominated, nominate the first upcoming player
+      // 4. If no player is currently nominated, nominate the first upcoming player internal (prevents deadlock)
       if (!room.currentAuctionPlayerId) {
-        await this.nominateNextUpcomingPlayer(roomId);
+        await this.nominateNextUpcomingPlayerInternal(roomId);
       }
 
       return { success: true, round: nextRound, recalledCount, room: updatedRoom };
-    } finally {
-      release();
-    }
+    });
   }
 
   private shuffleArray<T>(array: T[]): T[] {
@@ -1264,8 +1542,7 @@ export class AuctionEngine implements OnApplicationBootstrap {
   }
 
   async recallPlayer(roomId: string, userId: string, auctionPlayerId: string) {
-    const release = await this.acquireLock(roomId);
-    try {
+    return await this.withLock(roomId, async () => {
       const room = await this.prisma.room.findUnique({
         where: { id: roomId },
         include: { members: { include: { user: true } } },
@@ -1314,9 +1591,7 @@ export class AuctionEngine implements OnApplicationBootstrap {
       }
 
       return { success: true, auctionPlayer: updatedAP };
-    } finally {
-      release();
-    }
+    });
   }
 
   getTimerState(roomId: string) {

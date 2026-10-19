@@ -15,6 +15,7 @@ export const HostControls = React.memo(function HostControls() {
   const user = useAuctionStore((s) => s.user);
   const room = useAuctionStore((s) => s.room);
   const isTimerPaused = useAuctionStore((s) => s.isTimerPaused);
+  const currentAuctionPlayer = useAuctionStore((s) => s.currentAuctionPlayer);
   const speedMultiplier = useAuctionStore((s) => s.speedMultiplier);
   const setSpeedMultiplier = useAuctionStore((s) => s.setSpeedMultiplier);
   const setTimer = useAuctionStore((s) => s.setTimer);
@@ -192,6 +193,22 @@ export const HostControls = React.memo(function HostControls() {
                     <Zap className={`w-3.5 h-3.5 ${(speedMultiplier || 1) > 1 ? 'text-slate-950 fill-slate-950' : 'text-amber-400'}`} />
                     <span>Blitz{(speedMultiplier && speedMultiplier > 1) ? ` ${speedMultiplier}x` : ''}</span>
                   </button>
+
+                  {/* Accelerated Blitz Round trigger when unsold players exist and no active player is currently bidding */}
+                  {(room.auctionPlayers?.filter((ap) => ap.status === 'UNSOLD').length || 0) > 0 && !currentAuctionPlayer && (
+                    <button
+                      onClick={() => {
+                        const unsold = room.auctionPlayers?.filter((ap) => ap.status === 'UNSOLD').length || 0;
+                        showFeedback(`Starting Accelerated Round (${unsold} players)...`);
+                        socketService.startAcceleratedRound(room.id, 15);
+                      }}
+                      className="flex items-center gap-1 px-2.5 py-1.5 min-h-[34px] rounded-lg bg-orange-600 hover:bg-orange-500 font-bold text-xs text-white shadow-sm transition-all active:scale-95 whitespace-nowrap touch-manipulation"
+                      title={`Trigger Accelerated Blitz Round for ${room.auctionPlayers?.filter((ap) => ap.status === 'UNSOLD').length || 0} unsold players`}
+                    >
+                      <Zap className="w-3.5 h-3.5 text-yellow-300 fill-yellow-300" />
+                      <span>Accelerate ({room.auctionPlayers?.filter((ap) => ap.status === 'UNSOLD').length || 0})</span>
+                    </button>
+                  )}
 
                   <button
                     onClick={handleEndAuction}

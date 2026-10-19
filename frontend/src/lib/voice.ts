@@ -524,6 +524,11 @@ class AuctioneerVoiceService {
     this.speak(`Accelerated Round ${round} started! ${timerSeconds} seconds blitz timer!`, true, this.rate);
   }
 
+  // 6b. Round Completed announcement
+  public announceRoundCompleted(round: number, unsoldAvailable: number, intermissionSeconds: number) {
+    this.speak(`Round ${round} completed. ${unsoldAvailable} unsold players returning for Accelerated Round in ${intermissionSeconds} seconds!`, true, this.rate);
+  }
+
   // 7. Player Recalled announcement
   public announcePlayerRecalled(playerName: string) {
     this.speak(`${playerName} recalled to the auction pool!`, true, this.rate);

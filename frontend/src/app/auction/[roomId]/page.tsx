@@ -63,6 +63,7 @@ export default function LiveAuctionArenaPage() {
     onPlayerSold,
     onPlayerUnsold,
     acceleratedNotice,
+    roundCompletedNotice,
     isAccelerated,
   } = useAuctionStore();
 
@@ -305,6 +306,11 @@ export default function LiveAuctionArenaPage() {
         });
 
         // Accelerated Round & Player Recall Events
+        socket.on('round_completed', (data: any) => {
+          useAuctionStore.getState().onRoundCompleted(data);
+          auctioneerVoice.announceRoundCompleted(data.round, data.unsoldAvailable, data.intermissionSeconds);
+        });
+
         socket.on('accelerated_round_started', (data: any) => {
           useAuctionStore.getState().onAcceleratedRoundStarted(data);
           auctioneerVoice.announceAcceleratedRound(data.round, data.timerSeconds);
@@ -390,6 +396,7 @@ export default function LiveAuctionArenaPage() {
         socket.off('auction_ended');
         socket.off('auction_completed');
         socket.off('team_selected');
+        socket.off('round_completed');
         socket.off('accelerated_round_started');
         socket.off('player_recalled');
         socket.off('new_message');
@@ -442,6 +449,11 @@ export default function LiveAuctionArenaPage() {
   const totalPoolCount = room.auctionPlayers?.length || 0;
   const myMember = room.members?.find((m) => m.userId === user?.id);
   const myTeam = room.teams?.find((t) => t.id === myMember?.teamId);
+  const isHost = Boolean(
+    room &&
+      user &&
+      (room.hostId === user.id || room.members?.some((m) => m.userId === user.id && m.isHost))
+  );
 
   return (
     <div className="min-h-screen text-slate-100 flex flex-col pb-16 relative">
@@ -614,6 +626,46 @@ export default function LiveAuctionArenaPage() {
       </header>
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-4 py-2 sm:py-3.5">
+        {/* Round Completed Intermission Notice Banner */}
+        {roundCompletedNotice && (
+          <div className="mb-2.5 p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-600/30 via-orange-600/25 to-yellow-600/20 border-2 border-amber-500/60 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-3 animate-in slide-in-from-top-3">
+            <div className="flex items-center gap-3">
+              <span className="p-2 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40 shrink-0">
+                <Trophy className="w-5 h-5 text-amber-300 animate-pulse" />
+              </span>
+              <div>
+                <div className="text-xs sm:text-sm font-black uppercase tracking-wider text-amber-300 flex items-center gap-2">
+                  <span>🏁 Round {roundCompletedNotice.round} Complete</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black font-mono">
+                    {roundCompletedNotice.unsoldAvailable} Unsold Returning
+                  </span>
+                </div>
+                <p className="text-xs text-slate-200 font-medium mt-0.5">
+                  {roundCompletedNotice.message}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+              {isHost && (
+                <button
+                  onClick={() => socketService.startAcceleratedRound(roomId, 15)}
+                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg transition-transform hover:scale-105 active:scale-95 flex items-center gap-1.5 shrink-0 whitespace-nowrap"
+                >
+                  <Zap className="w-3.5 h-3.5 fill-slate-950" />
+                  <span>Start Accelerated Now</span>
+                </button>
+              )}
+              <button
+                onClick={() => useAuctionStore.getState().dismissRoundCompletedNotice()}
+                className="p-1.5 rounded-lg bg-slate-900/60 hover:bg-slate-800 text-slate-400 hover:text-white shrink-0"
+                title="Dismiss"
+              >
+                <Check className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Accelerated Round Live Notice Banner */}
         {acceleratedNotice && (
           <div className="mb-2.5 p-2 sm:p-2.5 rounded-xl bg-gradient-to-r from-orange-600/30 via-amber-600/20 to-orange-600/30 border border-orange-500/60 shadow-lg flex items-center justify-between gap-2 animate-in slide-in-from-top-2">

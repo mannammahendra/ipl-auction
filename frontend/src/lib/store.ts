@@ -174,6 +174,7 @@ interface AuctionStore {
   // Accelerated Round
   isAccelerated: boolean;
   acceleratedNotice: { message: string; round: number; timerSeconds: number } | null;
+  roundCompletedNotice: { round: number; unsoldAvailable: number; message: string; intermissionSeconds: number } | null;
 
   // Auction Speed / Blitz Multiplier
   speedMultiplier: number;
@@ -202,6 +203,8 @@ interface AuctionStore {
   updateVoiceParticipantState: (socketId: string, state: { isMuted?: boolean; isSpeaking?: boolean }) => void;
 
   // Accelerated Actions
+  onRoundCompleted: (payload: { round: number; unsoldAvailable: number; message: string; intermissionSeconds: number }) => void;
+  dismissRoundCompletedNotice: () => void;
   onAcceleratedRoundStarted: (payload: { round: number; timerSeconds: number; recalledCount: number; message: string }) => void;
   onPlayerRecalled: (payload: { auctionPlayer: AuctionPlayer; recalledBy: string; message: string }) => void;
   dismissAcceleratedNotice: () => void;
@@ -242,6 +245,7 @@ export const useAuctionStore = create<AuctionStore>((set) => ({
   // Accelerated Round
   isAccelerated: false,
   acceleratedNotice: null,
+  roundCompletedNotice: null,
 
   // Auction Speed / Blitz Multiplier
   speedMultiplier: 1.0,
@@ -381,6 +385,7 @@ export const useAuctionStore = create<AuctionStore>((set) => ({
         remainingTimer: timerSeconds,
         soldCelebration: null,
         unsoldNotice: null,
+        roundCompletedNotice: null,
       };
     });
   },
@@ -481,9 +486,24 @@ export const useAuctionStore = create<AuctionStore>((set) => ({
     });
   },
 
+  onRoundCompleted: (payload) => {
+    set({
+      roundCompletedNotice: payload,
+      currentAuctionPlayer: null,
+      currentBidAmount: 0,
+      currentBidTeamId: null,
+      currentBidTeam: null,
+      currentBidderName: null,
+      currentBids: [],
+    });
+  },
+
+  dismissRoundCompletedNotice: () => set({ roundCompletedNotice: null }),
+
   onAcceleratedRoundStarted: ({ round, timerSeconds, message }) => {
     set((state) => ({
       isAccelerated: true,
+      roundCompletedNotice: null,
       remainingTimer: timerSeconds,
       acceleratedNotice: { message, round, timerSeconds },
       room: state.room ? { ...state.room, currentRound: round, bidTimerSeconds: timerSeconds } : null,
