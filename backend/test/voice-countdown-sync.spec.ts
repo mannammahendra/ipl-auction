@@ -190,7 +190,7 @@ class AuctioneerVoiceLogicTestHarness {
 
     const formattedPrice = formatRupeesSpoken(basePrice || 2000000);
     const rolePart = role ? `, ${role}` : '';
-    const text = `Next player: ${playerName}${rolePart}. Base price: ${formattedPrice}.`;
+    const text = `${playerName}${rolePart}. Base price: ${formattedPrice}.`;
     this.speak(text, 'NOMINATION');
   }
 
@@ -355,7 +355,7 @@ describe('Auction Voice Speed & Countdown Synchronization Test Suite', () => {
   it('7. upcoming player names and base prices are announced correctly', () => {
     voice.announceNomination('Jasprit Bumrah', 'Bowler', 'lot-bumrah', 20000000);
     expect(voice.spokenUtterances[0].text).toBe(
-      'Next player: Jasprit Bumrah, Bowler. Base price: 2 Crore.'
+      'Jasprit Bumrah, Bowler. Base price: 2 Crore.'
     );
   });
 

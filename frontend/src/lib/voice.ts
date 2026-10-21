@@ -583,7 +583,7 @@ class AuctioneerVoiceService {
     const cleanRole = mapPlayerRole(role || undefined);
     const formattedPrice = formatRupeesSpoken(basePrice || 2000000);
     const rolePart = cleanRole ? `, ${cleanRole}` : '';
-    const text = `Next player: ${playerName}${rolePart}. Base price: ${formattedPrice}.`;
+    const text = `${playerName}${rolePart}. Base price: ${formattedPrice}.`;
 
     this.speak(text, 'NOMINATION');
   }
@@ -687,7 +687,7 @@ class AuctioneerVoiceService {
   // 6. Test Voice Announcement Button handler - speaks with highest priority so it always sounds
   public testVoice(): void {
     this.unlockAudio();
-    const sampleText = 'Next player: Virat Kohli. Base price: 2 Crore. Royal Challengers Bengaluru bids 2 Crore 20 Lakh.';
+    const sampleText = 'Virat Kohli. Base price: 2 Crore. Royal Challengers Bengaluru bids 2 Crore 20 Lakh.';
     this.speak(sampleText, 'RESULT');
   }
 }
