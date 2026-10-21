@@ -221,7 +221,7 @@ setLoading(false); // Instant render - never leave user staring at a spinner
           const isAuctionActive = (currentRoom?.status === 'AUCTION_ACTIVE' || !currentRoom?.status) && !currentRoom?.isPaused;
           const isPlayerNominated = currentAP?.status === 'NOMINATED';
 
-          // Countdown 5 to 0 numbers announced strictly at configured 3.0x voice speed
+          // Countdown 5 to 0 numbers announced strictly at configured 2.0x voice speed
           if (isAuctionActive && isPlayerNominated && data.remainingSeconds <= 5 && data.remainingSeconds >= 0) {
             auctioneerVoice.announceCountdown(data.remainingSeconds, currentAP?.id, data.speedMultiplier || 1.0);
           } else if (data.remainingSeconds > 5) {
@@ -631,7 +631,7 @@ setLoading(false); // Instant render - never leave user staring at a spinner
                 </span>
               </button>
 
-                            {/* 2. VOICE COMMENTARY MUTE / UNMUTE (3.0x Default) */}
+                            {/* 2. VOICE COMMENTARY MUTE / UNMUTE (2.0x Default) */}
               <button
                 onClick={() => {
                   const next = auctioneerVoice.toggle();
@@ -642,12 +642,12 @@ setLoading(false); // Instant render - never leave user staring at a spinner
                     ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/25'
                     : 'bg-rose-500/15 text-rose-300 border-rose-500/40 hover:bg-rose-500/25'
                 }`}
-                title={voiceEnabled ? 'Mute Voice Commentary (3.0x)' : 'Unmute Voice Commentary'}
+                title={voiceEnabled ? 'Mute Voice Commentary (2.0x)' : 'Unmute Voice Commentary'}
               >
                 {voiceEnabled ? (
                   <>
                     <Volume2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span>Voice 3x</span>
+                    <span>Voice 2x</span>
                   </>
                 ) : (
                   <>

@@ -1,6 +1,6 @@
 // Cricket Auction Voice Announcement Engine
 // Professional, energetic female Indian English auctioneer commentary
-// Fast 3.0x default commentary pace completely independent of auction countdown / blitz speed
+// Fast 2.0x default commentary pace completely independent of auction countdown / blitz speed
 
 export type SpeechPriority = 'INFO' | 'COUNTDOWN' | 'NOMINATION' | 'BID' | 'RESULT';
 
@@ -14,7 +14,7 @@ export const PRIORITY_ORDER: Record<SpeechPriority, number> = {
 
 export interface VoiceSettings {
   enabled: boolean;
-  rate: number; // Normal voice speed, default 3.0x
+  rate: number; // Normal voice speed, default 2.0x
   pitch: number; // Voice pitch, default 1.0x
   volume: number; // Voice volume, default 0.85 (85%)
   voiceURI: string | null;
@@ -144,7 +144,7 @@ export function formatRupeesSpoken(amount: number): string {
 
 class AuctioneerVoiceService {
   private enabled: boolean = true;
-  private rate: number = 3.0; // Strictly 3.0x default voice playback rate
+  private rate: number = 2.0; // Strictly 2.0x default voice playback rate
   private pitch: number = 1.0; // 1.0x normal pitch
   private volume: number = 0.85; // 85% volume
   private countdownEnabled: boolean = true;
@@ -174,9 +174,9 @@ class AuctioneerVoiceService {
         const savedRate = localStorage.getItem('ipl_voice_rate');
         if (savedRate) {
           const parsedRate = parseFloat(savedRate);
-          this.rate = !isNaN(parsedRate) && parsedRate > 0 ? parsedRate : 3.0;
+          this.rate = !isNaN(parsedRate) && parsedRate > 0 ? parsedRate : 2.0;
         } else {
-          this.rate = 3.0;
+          this.rate = 2.0;
         }
 
         const savedPitch = localStorage.getItem('ipl_voice_pitch');
@@ -338,7 +338,7 @@ class AuctioneerVoiceService {
   }
 
   public setRate(rate: number) {
-    const cleanRate = Math.min(4.0, Math.max(0.5, rate || 3.0));
+    const cleanRate = Math.min(4.0, Math.max(0.5, rate || 2.0));
     this.rate = cleanRate;
     if (typeof window !== 'undefined') {
       localStorage.setItem('ipl_voice_rate', String(cleanRate));
@@ -406,14 +406,14 @@ class AuctioneerVoiceService {
 
   public resetToDefaults() {
     this.enabled = true;
-    this.rate = 3.0; // Required 3.0x default
+    this.rate = 2.0; // Required 3.0x default
     this.pitch = 1.0; // Required 1.0x pitch
     this.volume = 0.85; // Required 85% volume
     this.countdownEnabled = true;
     this.selectedVoiceURI = null;
     if (typeof window !== 'undefined') {
       localStorage.setItem('ipl_voice_enabled', 'true');
-      localStorage.setItem('ipl_voice_rate', '3.0');
+      localStorage.setItem('ipl_voice_rate', '2.0');
       localStorage.setItem('ipl_voice_pitch', '1.0');
       localStorage.setItem('ipl_voice_volume', '0.85');
       localStorage.setItem('ipl_voice_countdown_enabled', 'true');
@@ -571,7 +571,7 @@ class AuctioneerVoiceService {
       }
     }
 
-    // Apply strict configuration: 3.0x normal voice speed, 1.0x pitch, 0.85 volume
+    // Apply strict configuration: 2.0x normal voice speed, 1.0x pitch, 0.85 volume
     utterance.rate = this.rate;
     utterance.pitch = this.pitch;
     utterance.volume = this.volume;
@@ -674,7 +674,7 @@ class AuctioneerVoiceService {
     this.speak(text, 'BID');
   }
 
-  // 3. Countdown: 5 down to 0, strictly at 3.0x speed, invalidated immediately on new bids
+  // 3. Countdown: 5 down to 0, strictly at 2.0x speed, invalidated immediately on new bids
   public announceCountdown(seconds: number, lotId?: string, _speedMultiplier: number = 1.0) {
     void _speedMultiplier;
     if (!this.enabled || !this.countdownEnabled) return;

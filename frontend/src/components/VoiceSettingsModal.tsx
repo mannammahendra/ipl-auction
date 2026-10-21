@@ -16,7 +16,7 @@ export const VoiceSettingsModal: React.FC<VoiceSettingsModalProps> = ({
   onSettingsChanged,
 }) => {
   const [enabled, setEnabled] = useState(true);
-  const [rate, setRate] = useState(3.0);
+  const [rate, setRate] = useState(2.0);
   const [pitch, setPitch] = useState(1.0);
   const [volume, setVolume] = useState(0.85);
   const [countdownEnabled, setCountdownEnabled] = useState(true);
@@ -88,7 +88,7 @@ export const VoiceSettingsModal: React.FC<VoiceSettingsModalProps> = ({
   const handleResetDefaults = () => {
     auctioneerVoice.resetToDefaults();
     setEnabled(true);
-    setRate(3.0);
+    setRate(2.0);
     setPitch(1.0);
     setVolume(0.85);
     setCountdownEnabled(true);
@@ -121,7 +121,7 @@ export const VoiceSettingsModal: React.FC<VoiceSettingsModalProps> = ({
                 </span>
               </h3>
               <p className="text-[11px] text-slate-400">
-                Independent 3.0x commentary pace for players, bids & countdown
+                Independent 2.0x commentary pace for players, bids & countdown
               </p>
             </div>
           </div>
@@ -168,7 +168,7 @@ export const VoiceSettingsModal: React.FC<VoiceSettingsModalProps> = ({
             </button>
           </div>
 
-          {/* 2. Voice Speed Slider (Default 3.0x) */}
+          {/* 2. Voice Speed Slider (Default 2.0x) */}
           <div className="p-3.5 rounded-xl bg-slate-800/40 border border-slate-700/50 space-y-2">
             <div className="flex items-center justify-between">
               <label className="font-semibold text-slate-200 flex items-center gap-2">
@@ -176,17 +176,17 @@ export const VoiceSettingsModal: React.FC<VoiceSettingsModalProps> = ({
                 <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-mono font-bold">
                   {rate.toFixed(1)}x
                 </span>
-                {rate === 3.0 && (
+                {rate === 2.0 && (
                   <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-bold">
-                    Standard 3x
+                    Standard 2x
                   </span>
                 )}
               </label>
               <button
-                onClick={() => handleRateChange(3.0)}
+                onClick={() => handleRateChange(2.0)}
                 className="text-[11px] text-amber-400 hover:text-amber-300 underline font-medium"
               >
-                Set 3.0x Default
+                Set 2.0x Default
               </button>
             </div>
             <input
@@ -200,7 +200,7 @@ export const VoiceSettingsModal: React.FC<VoiceSettingsModalProps> = ({
             />
             <div className="flex justify-between text-[10px] font-mono text-slate-500">
               <span>0.5x</span>
-              <span className="text-amber-400 font-bold">3.0x (Required Default)</span>
+              <span className="text-amber-400 font-bold">2.0x (Default)</span>
               <span>4.0x</span>
             </div>
             <p className="text-[11px] text-slate-400 italic">
@@ -313,7 +313,7 @@ export const VoiceSettingsModal: React.FC<VoiceSettingsModalProps> = ({
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800 transition"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset Defaults (3.0x)</span>
+            <span>Reset Defaults (2.0x)</span>
           </button>
 
           <div className="flex items-center gap-2">
