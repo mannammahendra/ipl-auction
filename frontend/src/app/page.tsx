@@ -301,7 +301,7 @@ function LandingContent() {
                   <div className="relative">
                     <input
                       type={showJoinPassword ? 'text' : 'password'}
-                      placeholder="Leave empty if not protected"
+                      placeholder="Enter your password"
                       value={roomPassword}
                       onChange={(e) => setRoomPassword(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 pr-10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
