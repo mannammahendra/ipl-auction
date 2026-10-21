@@ -532,7 +532,8 @@ class AuctioneerVoiceService {
       utterance.voice = profile.voice;
     }
     utterance.pitch = profile.pitch;
-    utterance.rate = 3.0; // Strictly set rate to 3.0 across all utterances
+    const utteranceRate = priority === 'COUNTDOWN' ? 5.0 : 3.0;
+    utterance.rate = utteranceRate;
     utterance.volume = forceLoud ? 1.0 : this.volume;
 
     // Retain in memory to prevent Chrome GC bug cutting off utterance
@@ -542,7 +543,7 @@ class AuctioneerVoiceService {
     utterance.onstart = () => {
       this.isSpeakingActive = true;
       this.pendingText = null;
-      console.log(`[Speech] Started speaking: "${text}" (${priority}, rate=3.0x)`);
+      console.log(`[Speech] Started speaking: "${text}" (${priority}, rate=${utteranceRate}x)`);
     };
     utterance.onend = () => {
       this.currentUtterance = null;
@@ -572,8 +573,8 @@ class AuctioneerVoiceService {
       console.warn(`[Speech] Speech error: "${e.error}" for "${text}"`);
     };
 
-    // Fast 3.0x speech safety timeouts (prevents locks without waiting)
-    const safetyMs = priority === 'COUNTDOWN' ? 400 : priority === 'BID' ? 800 : 2000;
+    // Fast speech safety timeouts (prevents locks without waiting)
+    const safetyMs = priority === 'COUNTDOWN' ? 300 : priority === 'BID' ? 800 : 2000;
     this.prioritySafetyTimeout = setTimeout(() => {
       this.isSpeakingActive = false;
       if (this.currentPriority === priority) {
@@ -585,14 +586,14 @@ class AuctioneerVoiceService {
       if (window.speechSynthesis.paused) {
         window.speechSynthesis.resume();
       }
-      utterance.rate = 3.0; // Strictly ensure 3.0 rate right before speak()
+      utterance.rate = utteranceRate; // Strictly ensure rate right before speak()
       if (priority === 'COUNTDOWN') {
         // 12ms micro-delay ensures Chrome's cancel() queue clear completes
         // before the new digit begins, guaranteeing immediate start without being dropped
         setTimeout(() => {
           try {
             if (this.currentPriority === 'COUNTDOWN' && this.enabled) {
-              utterance.rate = 3.0; // Re-assert rate = 3.0 on countdown utterance before speak()
+              utterance.rate = 5.0; // Re-assert rate = 5.0 on countdown utterance before speak()
               window.speechSynthesis.speak(utterance);
             }
           } catch (e) {}

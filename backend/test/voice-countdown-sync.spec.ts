@@ -199,12 +199,13 @@ class AuctioneerVoiceLogicTestHarness {
     }
 
     this.isSpeakingActive = true;
+    const utteranceRate = priority === 'COUNTDOWN' ? 5.0 : 3.0;
     this.spokenUtterances.push({
       text,
       priority,
-      rate: 3.0, // Strictly 3.0x on every utterance
+      rate: utteranceRate,
     });
-    this.logs.push(`[Speech] Started speaking: "${text}" (${priority}, rate=3.0x)`);
+    this.logs.push(`[Speech] Started speaking: "${text}" (${priority}, rate=${utteranceRate}x)`);
   }
 
   public simulateUtteranceEnd() {
@@ -369,7 +370,7 @@ describe('Auction Voice Fix — Timer (3, 2, 1), Live Bids, and Sale Announcemen
       expect(harness.getCountdownSpokenText(-1)).toBeNull();
     });
 
-    it('announces only 3, 2, 1 during countdown and speaks each at 3.0x rate', () => {
+    it('announces only 3, 2, 1 during countdown and speaks each at 5.0x rate', () => {
       let time = 10000;
       // Countdown ticks from 5 down to 0
       [5, 4, 3, 2, 1, 0].forEach((sec) => {
@@ -382,7 +383,7 @@ describe('Auction Voice Fix — Timer (3, 2, 1), Live Bids, and Sale Announcemen
       // Exactly 3, 2, 1 spoken — 5, 4, and 0 are skipped
       expect(harness.spokenUtterances.map((u) => u.text)).toEqual(['3', '2', '1']);
       harness.spokenUtterances.forEach((u) => {
-        expect(u.rate).toBe(3.0);
+        expect(u.rate).toBe(5.0);
         expect(u.priority).toBe('COUNTDOWN');
       });
     });
@@ -548,8 +549,8 @@ describe('Auction Voice Fix — Timer (3, 2, 1), Live Bids, and Sale Announcemen
     });
   });
 
-  describe('5. Rate Parity: Countdown Voice Matches Player & Bid Speed at 3.0x', () => {
-    it('applies exactly 3.0x rate across all utterance types (countdown, nomination, bid, sold)', () => {
+  describe('5. Rate Configuration: Countdown Voice at 5.0x, Announcements at 3.0x', () => {
+    it('applies 5.0x rate for countdown, and 3.0x rate for nomination, bid, and sold', () => {
       harness.announceNomination('Virat Kohli', 'BATSMAN', 'lot-1');
       harness.simulateUtteranceEnd();
 
@@ -563,12 +564,13 @@ describe('Auction Voice Fix — Timer (3, 2, 1), Live Bids, and Sale Announcemen
       harness.simulateUtteranceEnd();
 
       expect(harness.spokenUtterances).toHaveLength(4);
-      harness.spokenUtterances.forEach((u) => {
-        expect(u.rate).toBe(3.0);
-      });
+      expect(harness.spokenUtterances[0]).toMatchObject({ text: 'Next player: Virat Kohli, Batter.', rate: 3.0 });
+      expect(harness.spokenUtterances[1]).toMatchObject({ text: 'CSK, 2 crore.', rate: 3.0 });
+      expect(harness.spokenUtterances[2]).toMatchObject({ text: '3', rate: 5.0 });
+      expect(harness.spokenUtterances[3]).toMatchObject({ text: 'MS Dhoni sold to CSK.', rate: 3.0 });
     });
 
-    it('speaks numbers 3, 2, 1 quickly and sequentially following the timer without delay at 1x and 2x Blitz', () => {
+    it('speaks numbers 3, 2, 1 quickly and sequentially following the timer at 5.0x speed at 1x and 2x Blitz', () => {
       // 1x Normal mode
       harness.resetCountdown();
       harness.spokenUtterances = [];
@@ -577,7 +579,7 @@ describe('Auction Voice Fix — Timer (3, 2, 1), Live Bids, and Sale Announcemen
         harness.simulateUtteranceEnd();
       });
       expect(harness.spokenUtterances.map((u) => u.text)).toEqual(['3', '2', '1']);
-      expect(harness.spokenUtterances.every((u) => u.rate === 3.0)).toBe(true);
+      expect(harness.spokenUtterances.every((u) => u.rate === 5.0)).toBe(true);
 
       // 2x Blitz mode
       harness.resetCountdown();
@@ -587,7 +589,7 @@ describe('Auction Voice Fix — Timer (3, 2, 1), Live Bids, and Sale Announcemen
         harness.simulateUtteranceEnd();
       });
       expect(harness.spokenUtterances.map((u) => u.text)).toEqual(['3', '2', '1']);
-      expect(harness.spokenUtterances.every((u) => u.rate === 3.0)).toBe(true);
+      expect(harness.spokenUtterances.every((u) => u.rate === 5.0)).toBe(true);
     });
   });
 });
