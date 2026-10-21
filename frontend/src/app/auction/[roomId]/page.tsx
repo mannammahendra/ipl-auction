@@ -199,10 +199,9 @@ export default function LiveAuctionArenaPage() {
           const isPlayerNominated = currentAP?.status === 'NOMINATED';
 
           if (isAuctionActive && isPlayerNominated && data.remainingSeconds <= 5 && data.remainingSeconds >= 0) {
-            const currentSpeed = data.speedMultiplier || useAuctionStore.getState().speedMultiplier || 1.0;
-            auctioneerVoice.announceCountdown(data.remainingSeconds, currentSpeed, currentAP?.id);
-          } else if (data.remainingSeconds > 5 || !isAuctionActive || !isPlayerNominated) {
-            auctioneerVoice.stopCountdown();
+            auctioneerVoice.announceCountdown(data.remainingSeconds, currentAP?.id);
+          } else if (data.remainingSeconds > 5) {
+            auctioneerVoice.resetCountdown();
           }
 
           if (data.remainingSeconds === 0) {
@@ -219,7 +218,7 @@ export default function LiveAuctionArenaPage() {
           }
         });
 
-        // 2. Bid placed: Speak out Team and Amount in Ellie Goulding voice (e.g. "CSK 2 Crore" or "MI 40 Crore")
+        // 2. Bid placed: Speak out Team and Amount in natural voice (e.g. "CSK 2 Crore" or "MI 40 Crore")
         socket.on('bid_placed', (data: any) => {
           clearZeroFallback();
           onBidPlaced(data);
@@ -230,12 +229,11 @@ export default function LiveAuctionArenaPage() {
             data.bid?.team?.name ||
             'Bidder';
           const bidAmount = Number(data.amount || data.bidAmount || data.bid?.amount || 0);
-          const currentSpeed = useAuctionStore.getState().speedMultiplier || 1.0;
           const activePlayerId = useAuctionStore.getState().currentAuctionPlayer?.id;
-          auctioneerVoice.announceBid(teamShort, bidAmount, currentSpeed, activePlayerId);
+          auctioneerVoice.announceBid(teamShort, bidAmount, activePlayerId);
         });
 
-        // 3. Player nominated: ONLY player name & type (e.g. "Virat Kohli, Batsman")
+        // 3. Player nominated: Full player name & type (e.g. "Virat Kohli, Batsman")
         socket.on('player_nominated', (data: any) => {
           clearZeroFallback();
           onPlayerNominated(data);
@@ -243,37 +241,71 @@ export default function LiveAuctionArenaPage() {
           const ap = data.auctionPlayer;
           const p = ap?.player;
           const canonicalId = ap?.id || p?.id;
-          if (p && canonicalId && canonicalId !== lastAnnouncedPlayerIdRef.current) {
+          const playerName = p?.name || ap?.name;
+          const playerRole = p?.role || ap?.role;
+          if (playerName) {
             lastAnnouncedPlayerIdRef.current = canonicalId;
-            auctioneerVoice.announceNomination(p.name, p.role);
+            auctioneerVoice.announceNomination(playerName, playerRole);
           }
         });
 
-        // 4. Sold: ONLY "Sold to {team} for {amount}!"
+        // 4. Sold: Clearly announce player name, winning franchise, and final sale amount
         socket.on('player_sold', (data: any) => {
           clearZeroFallback();
           onPlayerSold(data);
           auctioneerVoice.stopCountdown();
-          const soldId = data.auctionPlayer?.id || data.auctionPlayer?.player?.id;
-          if (soldId) {
-            lastAnnouncedPlayerIdRef.current = soldId;
-          }
+
           const currentRoom = useAuctionStore.getState().room;
-          const winningTeam = currentRoom?.teams?.find((t) => t.id === data.auctionPlayer?.soldToTeamId);
-          const teamName = winningTeam?.name || winningTeam?.shortName || 'Franchise';
-          const currentSpeed = useAuctionStore.getState().speedMultiplier || 1.0;
-          auctioneerVoice.announceSold(teamName, data.auctionPlayer?.soldPrice || 0, currentSpeed);
+          const currentAP = useAuctionStore.getState().currentAuctionPlayer;
+
+          const winningTeam =
+            data.winningTeam ||
+            currentRoom?.teams?.find(
+              (t: any) =>
+                t.id === data.auctionPlayer?.soldToTeamId ||
+                t.id === data.squadMember?.teamId ||
+                t.id === data.auctionPlayer?.soldToTeam?.id
+            ) ||
+            data.auctionPlayer?.soldToTeam ||
+            data.squadMember?.team;
+
+          const teamName =
+            winningTeam?.name ||
+            winningTeam?.shortName ||
+            data.team?.name ||
+            data.team?.shortName ||
+            'Winning Franchise';
+
+          const playerName =
+            data.auctionPlayer?.player?.name ||
+            data.squadMember?.player?.name ||
+            currentAP?.player?.name ||
+            'Player';
+
+          const soldPrice = Number(
+            data.soldPrice ??
+            data.auctionPlayer?.soldPrice ??
+            currentAP?.soldPrice ??
+            0
+          );
+
+          lastAnnouncedPlayerIdRef.current = null;
+
+          auctioneerVoice.announceSold(playerName, teamName, soldPrice);
         });
 
-        // 5. Unsold: all sounds when player is unsold removed
+        // 5. Unsold: Announce player unsold result
         socket.on('player_unsold', (data: any) => {
           clearZeroFallback();
           onPlayerUnsold(data);
           auctioneerVoice.stopCountdown();
-          const unsoldId = data.auctionPlayer?.id || data.auctionPlayer?.player?.id;
-          if (unsoldId) {
-            lastAnnouncedPlayerIdRef.current = unsoldId;
-          }
+          lastAnnouncedPlayerIdRef.current = null;
+          const currentAP = useAuctionStore.getState().currentAuctionPlayer;
+          const playerName =
+            data.auctionPlayer?.player?.name ||
+            currentAP?.player?.name ||
+            'Player';
+          auctioneerVoice.announceUnsold(playerName);
         });
 
         socket.on('auction_paused', (data: any) => {

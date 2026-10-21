@@ -1,10 +1,19 @@
 // Ellie Goulding Voice Commentary Engine for IPL Auction
 // Inspired by the British singer of "Love Me Like You Do"
-// Ethereal, melodic soprano cadence with fast 1.5x cricket commentary pace
+// Natural, intelligible 1.0x commentary pace decoupled from Blitz speed
 
 import { useAuctionStore } from './store';
 
 export type VoicePack = 'ELLIE_GOULDING';
+
+export type SpeechPriority = 'COUNTDOWN' | 'BID' | 'NOMINATION' | 'RESULT';
+
+export const PRIORITY_ORDER: Record<SpeechPriority, number> = {
+  COUNTDOWN: 1,
+  BID: 2,
+  NOMINATION: 3,
+  RESULT: 4,
+};
 
 export interface ScoredVoice {
   voice: SpeechSynthesisVoice;
@@ -17,7 +26,7 @@ export interface ScoredVoice {
 class AuctioneerVoiceService {
   private enabled: boolean = true;
   private voicePack: VoicePack = 'ELLIE_GOULDING';
-  private rate: number = 3.0; // 3x fast commentary cadence as requested
+  private rate: number = 1.0; // Natural 1x intelligible commentary speed as requested
   private pitch: number = 1.08; // Ellie Goulding airy melodic soprano pitch
   private volume: number = 1.0;
   private allVoices: SpeechSynthesisVoice[] = [];
@@ -33,6 +42,8 @@ class AuctioneerVoiceService {
   private lastAnnouncedCountdownNumber: number | null = null;
   private lastAnnouncedCountdownLotId: string | null = null;
   private lastAnnouncedBidKey: string | null = null;
+  private currentPriority: SpeechPriority | null = null;
+  private prioritySafetyTimeout: any = null;
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -47,9 +58,9 @@ class AuctioneerVoiceService {
         const savedRate = localStorage.getItem('ipl_voice_rate');
         if (savedRate) {
           const parsed = parseFloat(savedRate);
-          this.rate = parsed >= 1.5 ? parsed : 2.0;
+          this.rate = parsed >= 0.8 && parsed <= 1.5 ? parsed : 1.0;
         } else {
-          this.rate = 2.0;
+          this.rate = 1.0;
         }
         localStorage.setItem('ipl_voice_rate', String(this.rate));
 
@@ -130,14 +141,18 @@ class AuctioneerVoiceService {
 
   public stopCountdown(): void {
     this.resetCountdown();
-    if (this.pendingTimeout) {
-      clearTimeout(this.pendingTimeout);
-      this.pendingTimeout = null;
-    }
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      try {
-        window.speechSynthesis.cancel();
-      } catch (e) {}
+    // Only cancel speech synthesis if countdown was the active speech
+    if (this.currentPriority === 'COUNTDOWN') {
+      if (this.pendingTimeout) {
+        clearTimeout(this.pendingTimeout);
+        this.pendingTimeout = null;
+      }
+      this.currentPriority = null;
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        try {
+          window.speechSynthesis.cancel();
+        } catch (e) {}
+      }
     }
   }
 
@@ -149,6 +164,10 @@ class AuctioneerVoiceService {
     return this.lastAnnouncedBidKey;
   }
 
+  public getCurrentPriority(): SpeechPriority | null {
+    return this.currentPriority;
+  }
+
   public getCountdownSpokenText(seconds: number): string | null {
     if (seconds >= 0 && seconds <= 5) {
       return String(seconds);
@@ -157,7 +176,12 @@ class AuctioneerVoiceService {
   }
 
   public stop(): void {
-    this.stopCountdown();
+    if (this.prioritySafetyTimeout) {
+      clearTimeout(this.prioritySafetyTimeout);
+      this.prioritySafetyTimeout = null;
+    }
+    this.currentPriority = null;
+    this.resetCountdown();
     this.lastAnnouncedBidKey = null;
     if (this.pendingTimeout) {
       clearTimeout(this.pendingTimeout);
@@ -199,9 +223,11 @@ class AuctioneerVoiceService {
   }
 
   public setRate(rate: number) {
-    this.rate = rate;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('ipl_voice_rate', String(rate));
+    if (rate >= 0.8 && rate <= 1.5) {
+      this.rate = rate;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('ipl_voice_rate', String(rate));
+      }
     }
   }
 
@@ -383,79 +409,38 @@ class AuctioneerVoiceService {
     this.recentBidTimes = [];
   }
 
-  // Dynamically and automatically compute speech rate based on timer speed and bidding speed
-  // Base rate is 3.0x (3x fast voice as requested), scaling with timer speed and bidding speed!
-  public computeDynamicRate(options?: {
-    isBid?: boolean;
-    isCountdown?: boolean;
-    timerSpeedMultiplier?: number;
-    remainingSeconds?: number;
-  }): number {
-    const baseRate = this.rate || 3.0;
-
-    // 1. TIMER SPEED FACTOR
-    // Derived from store multiplier, parameter, and active timer speed
-    let timerSpeed = options?.timerSpeedMultiplier || this.activeTimerSpeed;
-    if (!timerSpeed && typeof window !== 'undefined') {
-      try {
-        timerSpeed = useAuctionStore.getState().speedMultiplier;
-      } catch (e) {
-        timerSpeed = 1.0;
-      }
-    }
-    if (!timerSpeed || timerSpeed < 1.0) {
-      timerSpeed = 1.0;
-    }
-
-    const isMobile = typeof navigator !== 'undefined' && (/android|iphone|ipad|ipod/i.test(navigator.userAgent));
-    const maxSafeRate = isMobile ? 2.5 : 3.5;
-    const minSafeRate = isMobile ? 1.2 : 1.5;
-
-    if (options?.isCountdown) {
-      const baseCountdownRate = Math.max(1.8, baseRate);
-      const countdownRate = baseCountdownRate * timerSpeed;
-      return Math.min(maxSafeRate, Math.max(minSafeRate, parseFloat(countdownRate.toFixed(2))));
-    }
-
-    // 2. BIDDING SPEED FACTOR
-    let biddingSpeedFactor = 1.0;
-    if (options?.isBid) {
-      const now = Date.now();
-      const deltaMs = this.lastBidTime > 0 ? (now - this.lastBidTime) : 9999;
-      this.lastBidTime = now;
-      this.recentBidTimes.push(now);
-
-      // Keep only bids from last 8 seconds
-      this.recentBidTimes = this.recentBidTimes.filter((t) => now - t <= 8000);
-      const bidsInLast8s = this.recentBidTimes.length;
-
-      // Accelerated speech rate when bids arrive in rapid succession (bidding speed)
-      if (deltaMs < 1000) {
-        biddingSpeedFactor = 1.35; // Rapid bidding frenzy (<1s between bids)
-      } else if (deltaMs < 2000) {
-        biddingSpeedFactor = 1.20; // Quick succession (<2s)
-      } else if (deltaMs < 3500) {
-        biddingSpeedFactor = 1.10;
-      }
-
-      if (bidsInLast8s >= 3) {
-        biddingSpeedFactor = Math.max(biddingSpeedFactor, 1.25);
-      }
-    }
-
-    // 3. COMBINE DYNAMICALLY: base rate * timer speed * bidding speed
-    const calculatedRate = baseRate * timerSpeed * biddingSpeedFactor;
-
-    return Math.min(maxSafeRate, Math.max(minSafeRate, parseFloat(calculatedRate.toFixed(2))));
+  // Returns natural 1x speech rate (decoupled from timer speed and Blitz mode)
+  public computeDynamicRate(): number {
+    return this.rate || 1.0;
   }
 
-  // Fast, reliable vocalization engineered to keep pace with rapid bidding and countdowns
-  public speak(text: string, forceLoud: boolean = false, overrideRate?: number) {
+  // Fast, reliable vocalization engineered with priority hierarchy
+  public speak(
+    text: string,
+    forceLoud: boolean = false,
+    overrideRate?: number,
+    priority: SpeechPriority = 'BID'
+  ) {
     if (!this.enabled || typeof window === 'undefined' || !window.speechSynthesis) return;
+
+    // Priority Check: If a higher priority announcement is currently speaking, do not interrupt it
+    if (this.currentPriority) {
+      const activeRank = PRIORITY_ORDER[this.currentPriority];
+      const newRank = PRIORITY_ORDER[priority];
+
+      // Higher priority announcement currently playing: drop incoming lower priority speech
+      if (activeRank > newRank) {
+        return;
+      }
+    }
 
     if (this.pendingTimeout) {
       clearTimeout(this.pendingTimeout);
       this.pendingTimeout = null;
+    }
+    if (this.prioritySafetyTimeout) {
+      clearTimeout(this.prioritySafetyTimeout);
+      this.prioritySafetyTimeout = null;
     }
 
     try {
@@ -463,9 +448,9 @@ class AuctioneerVoiceService {
       if (window.speechSynthesis.paused) {
         window.speechSynthesis.resume();
       }
-    } catch (e) {
-      // ignore
-    }
+    } catch (e) {}
+
+    this.currentPriority = priority;
 
     const utterance = new SpeechSynthesisUtterance(text);
     const profile = this.getActiveVoiceProfile();
@@ -474,7 +459,7 @@ class AuctioneerVoiceService {
       utterance.voice = profile.voice;
     }
     utterance.pitch = profile.pitch;
-    utterance.rate = overrideRate || profile.rate;
+    utterance.rate = this.rate;
     utterance.volume = forceLoud ? 1.0 : this.volume;
 
     // Retain in memory to prevent Chrome GC bug cutting off utterance
@@ -484,13 +469,36 @@ class AuctioneerVoiceService {
     };
     utterance.onend = () => {
       this.currentUtterance = null;
+      if (this.prioritySafetyTimeout) {
+        clearTimeout(this.prioritySafetyTimeout);
+        this.prioritySafetyTimeout = null;
+      }
+      if (this.currentPriority === priority) {
+        this.currentPriority = null;
+      }
     };
     utterance.onerror = (e) => {
       this.currentUtterance = null;
+      if (this.prioritySafetyTimeout) {
+        clearTimeout(this.prioritySafetyTimeout);
+        this.prioritySafetyTimeout = null;
+      }
+      if (this.currentPriority === priority) {
+        this.currentPriority = null;
+      }
       if (e.error === 'not-allowed') {
         this.pendingText = text;
       }
     };
+
+    // Safety timeout to avoid priority deadlocks if browser never fires onend
+    if (priority === 'NOMINATION' || priority === 'RESULT') {
+      this.prioritySafetyTimeout = setTimeout(() => {
+        if (this.currentPriority === priority) {
+          this.currentPriority = null;
+        }
+      }, 4000);
+    }
 
     // Chromium requires a brief micro-delay after cancel() so the audio channel flushes cleanly
     this.pendingTimeout = setTimeout(() => {
@@ -506,25 +514,27 @@ class AuctioneerVoiceService {
     }, 8);
   }
 
-  // 1. Announce Player Coming to Podium: ONLY player name & type, brisk & punchy
-  // e.g. "Virat Kohli, Batsman." or "MS Dhoni, Wicket-Keeper."
-  public announceNomination(playerName: string, role: string) {
+  // 1. Announce Player Coming to Podium: Full player name & type, natural 1x speaking rate
+  // e.g. "Virat Kohli, Batsman." or "Jasprit Bumrah, Bowler."
+  public announceNomination(playerName: string, role?: string) {
     this.stopCountdown();
     this.lastAnnouncedBidKey = null;
     this.lastAnnouncedCountdownLotId = null;
+    const cleanPlayer = playerName && playerName.trim() ? playerName.trim() : 'Player';
     const roles: Record<string, string> = {
-      WICKET_KEEPER: 'Wicket-Keeper',
+      BATSMAN: 'Batsman',
       BOWLER: 'Bowler',
       ALL_ROUNDER: 'All-Rounder',
+      WICKET_KEEPER: 'Wicket-Keeper',
     };
-    const text = `${playerName}, ${roles[role] || 'Batsman'}.`;
-    this.speak(text, false, this.rate);
+    const roleNormalized = role ? (roles[role.toUpperCase()] || role) : 'Batsman';
+    const text = `${cleanPlayer}, ${roleNormalized}.`;
+    this.speak(text, false, this.rate, 'NOMINATION');
   }
 
-  // 2. Announce Live Bid: Speak out Team and Amount in Ellie Goulding voice
+  // 2. Announce Live Bid: Speak out Team and Amount in natural 1x voice
   // e.g. "CSK 2 Crore" or "MI 40 Crore"
-  // Automatically scales speed based on timer speed and bidding speed
-  public announceBid(teamShortName: string, amount: number, timerSpeedMultiplier?: number, lotId?: string) {
+  public announceBid(teamShortName: string, amount: number, lotId?: string) {
     if (!amount || amount <= 0) return;
     this.stopCountdown();
 
@@ -535,19 +545,20 @@ class AuctioneerVoiceService {
     }
     this.lastAnnouncedBidKey = bidKey;
 
-    const dynamicRate = this.computeDynamicRate({
-      isBid: true,
-      timerSpeedMultiplier,
-    });
     const price = this.formatRupeesSpoken(amount);
     // Fluent pronunciation without punctuation pause: e.g. "CSK 2 Crore"
-    this.speak(`${cleanTeam} ${price}`, false, dynamicRate);
+    this.speak(`${cleanTeam} ${price}`, false, this.rate, 'BID');
   }
 
-  // 3. Final countdown: 5 to 0 automatically synchronized with timer speed
-  // At 5: "5", at 4: "4", at 3: "3", at 2: "2", at 1: "1", at 0: "0"
-  public announceCountdown(seconds: number, timerSpeedMultiplier?: number, lotId?: string) {
+  // 3. Final countdown: 5 to 0 at natural 1x voice speed
+  // If nomination or sale is active, skips countdown to preserve critical speech
+  public announceCountdown(seconds: number, lotId?: string) {
     if (!this.enabled || seconds < 0 || seconds > 5) return;
+
+    // Critical announcements take precedence: never interrupt nomination or sale results
+    if (this.currentPriority === 'NOMINATION' || this.currentPriority === 'RESULT') {
+      return;
+    }
 
     // Reset countdown sequence if lot changed
     if (lotId && lotId !== this.lastAnnouncedCountdownLotId) {
@@ -567,31 +578,30 @@ class AuctioneerVoiceService {
 
     this.lastAnnouncedCountdownNumber = seconds;
 
-    const dynamicRate = this.computeDynamicRate({
-      isCountdown: true,
-      timerSpeedMultiplier,
-      remainingSeconds: seconds,
-    });
-
     const spokenText = this.getCountdownSpokenText(seconds);
     if (spokenText) {
-      this.speak(spokenText, true, dynamicRate);
+      this.speak(spokenText, true, this.rate, 'COUNTDOWN');
     }
   }
 
-  // 4. Sold: ONLY "Sold to {team} for {amount}!"
-  // e.g. "Sold to Chennai Super Kings for 14 Crore!"
-  public announceSold(teamName: string, amount: number, timerSpeedMultiplier?: number) {
+  // 4. Sold: Clearly announce player name, winning franchise, and final sale amount
+  // e.g. "Sold! Virat Kohli to Royal Challengers Bengaluru for 21 Crore!"
+  public announceSold(playerName: string, teamName: string, amount: number) {
     this.stopCountdown();
     this.lastAnnouncedBidKey = null;
-    const dynamicRate = this.computeDynamicRate({ timerSpeedMultiplier });
     const price = this.formatRupeesSpoken(amount);
-    this.speak(`Sold to ${teamName} for ${price}!`, true, dynamicRate);
+    const cleanPlayer = playerName && playerName.trim() ? playerName.trim() : 'Player';
+    const cleanTeam = teamName && teamName.trim() ? teamName.trim() : 'Winning Franchise';
+    this.speak(`Sold! ${cleanPlayer} to ${cleanTeam} for ${price}!`, true, this.rate, 'RESULT');
   }
 
-  // 5. Unsold: (Disabled: all sounds when player was unsold removed)
-  public announceUnsold() {
-    // Disabled as requested: all sounds when player is unsold removed
+  // 5. Unsold: Announce player unsold result
+  // e.g. "Steve Smith unsold."
+  public announceUnsold(playerName?: string) {
+    this.stopCountdown();
+    this.lastAnnouncedBidKey = null;
+    const cleanPlayer = playerName && playerName.trim() ? playerName.trim() : 'Player';
+    this.speak(`${cleanPlayer} unsold.`, true, this.rate, 'RESULT');
   }
 
   // 6. Accelerated Round announcement
