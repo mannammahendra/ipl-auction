@@ -7,7 +7,6 @@ import { socketService } from '../lib/socket';
 import { useAuctionStore } from '../lib/store';
 import {
   ArrowRight,
-  Play,
   Eye,
   EyeOff,
 } from 'lucide-react';
@@ -154,33 +153,6 @@ function LandingContent() {
     }
   };
 
-  const handleInstantDemo = async () => {
-    try {
-      setIsLoading(true);
-      setErrorMessage(null);
-
-      const auth = await api.auth.guest('Auctioneer_Pro');
-      api.setToken(auth.token);
-      socketService.disconnect();
-      setUser(auth.user, auth.token);
-
-      const room = await api.rooms.create({
-        name: 'IPL Mega Demo Auction',
-        startingPurse: 1200000000,
-        bidTimerSeconds: 20,
-        squadSize: 11,
-        minSquad: 11,
-        maxSquad: 18,
-        maxOverseas: 4,
-      });
-
-      router.push(`/lobby/${room.id}`);
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to launch demo');
-      setIsLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen text-slate-100 flex flex-col justify-between selection:bg-amber-400 selection:text-slate-950">
       {/* Top Header */}
@@ -199,16 +171,6 @@ function LandingContent() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleInstantDemo}
-            disabled={isLoading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg transition-transform hover:scale-105 shrink-0 whitespace-nowrap"
-          >
-            <Play className="w-3 h-3 fill-current shrink-0" />
-            <span>Quick Demo Room</span>
-          </button>
-        </div>
       </header>
 
       {/* Main Content Area */}
@@ -412,18 +374,6 @@ function LandingContent() {
               </form>
             )}
 
-            {/* Instant Demo Auction Quick Action */}
-            <div className="mt-3 pt-3 border-t border-slate-800/80 text-center">
-              <button
-                type="button"
-                onClick={handleInstantDemo}
-                disabled={isLoading}
-                className="w-full py-2 px-3 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-amber-500/30 text-amber-300 font-bold text-xs tracking-wider transition-colors flex items-center justify-center gap-1.5"
-              >
-                <Play className="w-3.5 h-3.5 fill-current text-amber-400" />
-                <span>⚡ Play Instant Demo Room (Solo vs AI)</span>
-              </button>
-            </div>
           </div>
         </div>
       </main>
