@@ -1,36 +1,43 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
-export type SpeechPriority = 'COUNTDOWN' | 'BID' | 'NOMINATION' | 'RESULT';
+export type SpeechPriority = 'COUNTDOWN' | 'NOMINATION' | 'RESULT';
 
 export const PRIORITY_ORDER: Record<SpeechPriority, number> = {
   COUNTDOWN: 1,
-  BID: 2,
-  NOMINATION: 3,
-  RESULT: 4,
+  NOMINATION: 2,
+  RESULT: 3,
 };
 
-// Pure logic mirror of AuctioneerVoiceService priority, Blitz rate scaling, and speech lifecycle
+// Mirror of frontend/src/lib/voice.ts AuctioneerVoiceService with forced 3.0x speed and 3 announcement types
 class AuctioneerVoiceLogicTestHarness {
   public enabled: boolean = true;
-  public rate: number = 1.0; // Natural 1x base speech rate
-  public activeTimerSpeed: number = 1.0;
+  public rate: number = 3.0; // Strictly 3.0x speed
   public spokenUtterances: { text: string; priority: SpeechPriority; rate: number }[] = [];
   public cancelledCount: number = 0;
   public lastAnnouncedCountdownNumber: number | null = null;
   public lastAnnouncedCountdownLotId: string | null = null;
-  public lastAnnouncedBidKey: string | null = null;
   public currentPriority: SpeechPriority | null = null;
   public isSpeakingActive: boolean = false;
   public announcedNominationLots = new Set<string>();
 
-  public setTimerSpeed(speedMultiplier: number): void {
-    if (speedMultiplier && speedMultiplier >= 1.0) {
-      this.activeTimerSpeed = speedMultiplier;
-      // Discard obsolete countdown when Blitz speed changes
-      if (this.currentPriority === 'COUNTDOWN') {
-        this.stopCountdown();
-      }
-    }
+  public getRate(): number {
+    return 3.0;
+  }
+
+  public setRate(_rate: number): void {
+    this.rate = 3.0;
+  }
+
+  public setTimerSpeed(_speedMultiplier: number): void {
+    // No-op: speech engine is completely independent of Blitz
+  }
+
+  public getTimerSpeed(): number {
+    return 1.0;
+  }
+
+  public computeDynamicRate(): number {
+    return 3.0;
   }
 
   public resetCountdown(): void {
@@ -50,7 +57,6 @@ class AuctioneerVoiceLogicTestHarness {
     this.isSpeakingActive = false;
     this.currentPriority = null;
     this.resetCountdown();
-    this.lastAnnouncedBidKey = null;
     this.cancelledCount++;
   }
 
@@ -61,34 +67,29 @@ class AuctioneerVoiceLogicTestHarness {
     return null;
   }
 
-  public computeDynamicRate(priority: SpeechPriority, speedMultiplier?: number): number {
-    const base = this.rate || 1.0;
-    if (priority === 'COUNTDOWN') {
-      const mult = Math.max(1.0, speedMultiplier || this.activeTimerSpeed || 1.0);
-      const computed = parseFloat((base * mult).toFixed(2));
-      return Math.min(2.5, Math.max(1.0, computed));
+  public normalizeTeamShort(rawName?: string): string {
+    if (!rawName) return 'Franchise';
+    const clean = rawName.toUpperCase().trim();
+    if (['CSK', 'MI', 'RCB', 'KKR', 'SRH', 'RR', 'GT', 'LSG', 'DC', 'PBKS'].includes(clean)) {
+      return clean;
     }
-    return base;
-  }
-
-  public formatRupeesSpoken(amount: number): string {
-    if (!amount || amount <= 0) return '0';
-    if (amount >= 10000000) {
-      const cr = amount / 10000000;
-      if (cr % 1 === 0) return `${cr} Crore`;
-      return `${parseFloat(cr.toFixed(2))} Crore`;
-    }
-    if (amount >= 100000) {
-      return `${Math.round(amount / 100000)} Lakh`;
-    }
-    return `${amount} rupees`;
+    if (clean.includes('CHENNAI') || clean.includes('SUPER KINGS')) return 'Chennai Super Kings';
+    if (clean.includes('MUMBAI') || clean.includes('INDIANS')) return 'Mumbai Indians';
+    if (clean.includes('BENGALURU') || clean.includes('BANGALORE') || clean.includes('CHALLENGERS')) return 'Royal Challengers Bengaluru';
+    if (clean.includes('KOLKATA') || clean.includes('KNIGHT')) return 'Kolkata Knight Riders';
+    if (clean.includes('HYDERABAD') || clean.includes('SUNRISERS')) return 'Sunrisers Hyderabad';
+    if (clean.includes('RAJASTHAN') || clean.includes('ROYALS')) return 'Rajasthan Royals';
+    if (clean.includes('GUJARAT') || clean.includes('TITANS')) return 'Gujarat Titans';
+    if (clean.includes('LUCKNOW') || clean.includes('GIANTS')) return 'Lucknow Super Giants';
+    if (clean.includes('DELHI') || clean.includes('CAPITALS')) return 'Delhi Capitals';
+    if (clean.includes('PUNJAB') || clean.includes('KINGS')) return 'Punjab Kings';
+    return rawName.trim();
   }
 
   public speak(
     text: string,
-    priority: SpeechPriority = 'BID',
-    overrideRate?: number,
-    speedMultiplier?: number
+    _forceLoud: boolean = false,
+    priority: SpeechPriority = 'COUNTDOWN'
   ) {
     if (!this.enabled) return;
 
@@ -96,30 +97,23 @@ class AuctioneerVoiceLogicTestHarness {
       this.currentPriority = 'NOMINATION';
     } else if (priority === 'RESULT') {
       this.currentPriority = 'RESULT';
-    } else if (priority === 'BID') {
-      if (this.currentPriority === 'RESULT') {
-        return;
-      }
-      this.currentPriority = 'BID';
     } else if (priority === 'COUNTDOWN') {
+      // Countdown must never interrupt nomination or sale result
       if (this.currentPriority === 'NOMINATION' || this.currentPriority === 'RESULT') {
         return;
       }
+      // If voice is currently actively speaking a countdown number, skip outdated intermediate numbers
       if (this.currentPriority === 'COUNTDOWN' && this.isSpeakingActive) {
-        return; // Skip outdated number
+        return;
       }
       this.currentPriority = 'COUNTDOWN';
     }
-
-    const effectiveRate = overrideRate !== undefined
-      ? overrideRate
-      : this.computeDynamicRate(priority, speedMultiplier);
 
     this.isSpeakingActive = true;
     this.spokenUtterances.push({
       text,
       priority,
-      rate: effectiveRate,
+      rate: 3.0, // Strictly 3.0x on every utterance
     });
   }
 
@@ -128,57 +122,9 @@ class AuctioneerVoiceLogicTestHarness {
     this.currentPriority = null;
   }
 
-  public announceNomination(playerName: string, role?: string, lotId?: string) {
-    if (!this.enabled) return;
-
-    if (lotId && this.announcedNominationLots.has(lotId)) {
-      return;
-    }
-    if (lotId) {
-      this.announcedNominationLots.add(lotId);
-      if (this.announcedNominationLots.size > 200) {
-        const first = this.announcedNominationLots.values().next().value;
-        if (first) this.announcedNominationLots.delete(first);
-      }
-    }
-
-    this.stopCountdown();
-    this.lastAnnouncedBidKey = null;
-    this.lastAnnouncedCountdownLotId = lotId || null;
-
-    const cleanPlayer = playerName && playerName.trim() ? playerName.trim() : 'Player';
-    const roles: Record<string, string> = {
-      BATSMAN: 'Batsman',
-      BOWLER: 'Bowler',
-      ALL_ROUNDER: 'All-Rounder',
-      WICKET_KEEPER: 'Wicket-Keeper',
-    };
-    const roleNormalized = role ? (roles[role.toUpperCase()] || role) : 'Batsman';
-    const text = `${cleanPlayer}, ${roleNormalized}.`;
-    this.speak(text, 'NOMINATION');
-  }
-
-  public announceBid(teamShortName: string, amount: number, lotId?: string) {
-    if (!amount || amount <= 0) return;
-    this.stopCountdown();
-
-    const cleanTeam = teamShortName.toUpperCase().trim();
-    const bidKey = `${lotId || 'current'}_${cleanTeam}_${amount}`;
-    if (this.lastAnnouncedBidKey === bidKey) {
-      return;
-    }
-    this.lastAnnouncedBidKey = bidKey;
-
-    const price = this.formatRupeesSpoken(amount);
-    this.speak(`${cleanTeam} ${price}`, 'BID');
-  }
-
-  public announceCountdown(seconds: number, lotId?: string, speedMultiplier?: number) {
+  // 1. Timer: Countdown numbers (5, 4, 3, 2, 1, 0)
+  public announceCountdown(seconds: number, lotId?: string) {
     if (!this.enabled || seconds < 0 || seconds > 5) return;
-
-    if (speedMultiplier && speedMultiplier >= 1.0) {
-      this.activeTimerSpeed = speedMultiplier;
-    }
 
     if (this.currentPriority === 'NOMINATION' || this.currentPriority === 'RESULT') {
       return;
@@ -204,195 +150,232 @@ class AuctioneerVoiceLogicTestHarness {
     this.lastAnnouncedCountdownNumber = seconds;
     const spokenText = this.getCountdownSpokenText(seconds);
     if (spokenText) {
-      const mult = speedMultiplier || this.activeTimerSpeed || 1.0;
-      const rate = this.computeDynamicRate('COUNTDOWN', mult);
-      this.speak(spokenText, 'COUNTDOWN', rate, mult);
+      this.speak(spokenText, true, 'COUNTDOWN');
     }
   }
 
-  public announceSold(playerName: string, teamName: string, amount: number) {
+  // 2. Player name: Clear name on nomination
+  public announceNomination(playerName: string, lotId?: string) {
+    if (!this.enabled || !playerName || !playerName.trim()) return;
+
+    if (lotId && this.announcedNominationLots.has(lotId)) {
+      return;
+    }
+    if (lotId) {
+      this.announcedNominationLots.add(lotId);
+      if (this.announcedNominationLots.size > 200) {
+        const first = this.announcedNominationLots.values().next().value;
+        if (first) this.announcedNominationLots.delete(first);
+      }
+    }
+
     this.stopCountdown();
-    this.lastAnnouncedBidKey = null;
-    const price = this.formatRupeesSpoken(amount);
-    const cleanPlayer = playerName && playerName.trim() ? playerName.trim() : 'Player';
-    const cleanTeam = teamName && teamName.trim() ? teamName.trim() : 'Winning Franchise';
-    this.speak(`Sold! ${cleanPlayer} to ${cleanTeam} for ${price}!`, 'RESULT');
+    this.lastAnnouncedCountdownLotId = lotId || null;
+
+    const cleanPlayer = playerName.trim();
+    this.speak(`${cleanPlayer}.`, false, 'NOMINATION');
   }
 
-  public announceUnsold(playerName?: string) {
+  // 3. Player sold: Clear winning franchise and player name
+  public announceSold(playerName: string, teamName: string) {
+    if (!this.enabled) return;
     this.stopCountdown();
-    this.lastAnnouncedBidKey = null;
+
     const cleanPlayer = playerName && playerName.trim() ? playerName.trim() : 'Player';
-    this.speak(`${cleanPlayer} unsold.`, 'RESULT');
+    const cleanTeam = this.normalizeTeamShort(teamName);
+    this.speak(`${cleanPlayer} sold to ${cleanTeam}.`, true, 'RESULT');
   }
+
+  // Disabled per requirements: Speak only Timer, Player name, and Player sold
+  public announceBid(_teamShortName?: string, _amount?: number, _lotId?: string) {}
+  public announceUnsold(_playerName?: string) {}
+  public announceAcceleratedRound(_round?: number, _timerSeconds?: number) {}
+  public announceRoundCompleted(_round?: number, _unsoldAvailable?: number, _intermissionSeconds?: number) {}
+  public announcePlayerRecalled(_playerName?: string) {}
 }
 
-describe('Auction Voice & Blitz Countdown Synchronization Test Suite', () => {
+describe('Auction Voice 3.0x Speed and Fixed Announcement Test Suite', () => {
   let harness: AuctioneerVoiceLogicTestHarness;
 
   beforeEach(() => {
     harness = new AuctioneerVoiceLogicTestHarness();
   });
 
-  describe('1. Countdown Acceleration Across Blitz Modes', () => {
-    it('schedules Normal countdown (1x) with 1.0x rate', () => {
-      harness.announceCountdown(5, 'lot-1', 1.0);
+  describe('1. Forced 3.0x Speech Rate Across All Modes', () => {
+    it('forces speech rate to 3.0x for countdown', () => {
+      harness.announceCountdown(5, 'lot-1');
       expect(harness.spokenUtterances).toHaveLength(1);
       expect(harness.spokenUtterances[0].text).toBe('5');
-      expect(harness.spokenUtterances[0].rate).toBe(1.0);
+      expect(harness.spokenUtterances[0].rate).toBe(3.0);
     });
 
-    it('schedules Blitz 1.25x countdown with 1.25x faster speech rate', () => {
-      harness.announceCountdown(5, 'lot-1', 1.25);
+    it('forces speech rate to 3.0x for player nomination', () => {
+      harness.announceNomination('Virat Kohli', 'lot-1');
       expect(harness.spokenUtterances).toHaveLength(1);
-      expect(harness.spokenUtterances[0].text).toBe('5');
-      expect(harness.spokenUtterances[0].rate).toBe(1.25);
+      expect(harness.spokenUtterances[0].text).toBe('Virat Kohli.');
+      expect(harness.spokenUtterances[0].rate).toBe(3.0);
     });
 
-    it('schedules Blitz 1.5x countdown with 1.5x faster speech rate', () => {
-      harness.announceCountdown(5, 'lot-1', 1.5);
+    it('forces speech rate to 3.0x for player sold announcement', () => {
+      harness.announceSold('Virat Kohli', 'Royal Challengers Bengaluru');
       expect(harness.spokenUtterances).toHaveLength(1);
-      expect(harness.spokenUtterances[0].text).toBe('5');
-      expect(harness.spokenUtterances[0].rate).toBe(1.5);
+      expect(harness.spokenUtterances[0].text).toBe('Virat Kohli sold to Royal Challengers Bengaluru.');
+      expect(harness.spokenUtterances[0].rate).toBe(3.0);
     });
 
-    it('schedules Blitz 2x countdown with 2.0x faster speech rate', () => {
-      harness.announceCountdown(5, 'lot-1', 2.0);
-      expect(harness.spokenUtterances).toHaveLength(1);
-      expect(harness.spokenUtterances[0].text).toBe('5');
-      expect(harness.spokenUtterances[0].rate).toBe(2.0);
+    it('does not allow setRate to overwrite 3.0x speed', () => {
+      harness.setRate(1.0);
+      expect(harness.getRate()).toBe(3.0);
+      harness.announceCountdown(4, 'lot-1');
+      expect(harness.spokenUtterances[0].rate).toBe(3.0);
     });
   });
 
-  describe('2. Important Announcements Preserved at Natural 1.0x Rate', () => {
-    it('speaks player nomination at natural 1.0x rate even when 2.0x Blitz is active', () => {
-      harness.setTimerSpeed(2.0);
-      harness.announceNomination('Virat Kohli', 'BATSMAN', 'lot-1');
+  describe('2. Blitz Independence: Voice Rate Remains 3.0x', () => {
+    it('maintains 3.0x speed regardless of Blitz multiplier (1.0x, 1.25x, 1.5x, 2.0x)', () => {
+      [1.0, 1.25, 1.5, 2.0].forEach((speedMultiplier) => {
+        harness.setTimerSpeed(speedMultiplier);
+        expect(harness.computeDynamicRate()).toBe(3.0);
+        expect(harness.getRate()).toBe(3.0);
+      });
+    });
 
+    it('does not alter speech rate when Blitz speed changes', () => {
+      harness.setTimerSpeed(2.0); // 2x Blitz
+      harness.announceCountdown(5, 'lot-1');
+      expect(harness.spokenUtterances[0].rate).toBe(3.0);
+    });
+  });
+
+  describe('3. Exactly Three Spoken Announcement Types', () => {
+    it('speaks countdown numbers (5 to 0)', () => {
+      [5, 4, 3, 2, 1, 0].forEach((sec) => {
+        harness.announceCountdown(sec, 'lot-1');
+        harness.simulateUtteranceEnd();
+      });
+      expect(harness.spokenUtterances.map((u) => u.text)).toEqual(['5', '4', '3', '2', '1', '0']);
+      harness.spokenUtterances.forEach((u) => {
+        expect(u.rate).toBe(3.0);
+        expect(u.priority).toBe('COUNTDOWN');
+      });
+    });
+
+    it('speaks player name clearly on nomination: "${playerName}."', () => {
+      harness.announceNomination('Jasprit Bumrah', 'lot-2');
       expect(harness.spokenUtterances).toHaveLength(1);
-      expect(harness.spokenUtterances[0].text).toBe('Virat Kohli, Batsman.');
+      expect(harness.spokenUtterances[0].text).toBe('Jasprit Bumrah.');
       expect(harness.spokenUtterances[0].priority).toBe('NOMINATION');
-      expect(harness.spokenUtterances[0].rate).toBe(1.0); // Preserved at natural 1.0x
+      expect(harness.spokenUtterances[0].rate).toBe(3.0);
     });
 
-    it('speaks live bid at natural 1.0x rate even when 2.0x Blitz is active', () => {
-      harness.setTimerSpeed(2.0);
-      harness.announceBid('RCB', 210000000, 'lot-1');
-
+    it('speaks confirmed sale: "${playerName} sold to ${franchise}."', () => {
+      harness.announceSold('Rohit Sharma', 'MI');
       expect(harness.spokenUtterances).toHaveLength(1);
-      expect(harness.spokenUtterances[0].text).toBe('RCB 21 Crore');
-      expect(harness.spokenUtterances[0].priority).toBe('BID');
-      expect(harness.spokenUtterances[0].rate).toBe(1.0); // Preserved at natural 1.0x
-    });
-
-    it('speaks confirmed sale at natural 1.0x rate even when 2.0x Blitz is active', () => {
-      harness.setTimerSpeed(2.0);
-      harness.announceSold('Virat Kohli', 'Royal Challengers Bengaluru', 210000000);
-
-      expect(harness.spokenUtterances).toHaveLength(1);
-      expect(harness.spokenUtterances[0].text).toBe('Sold! Virat Kohli to Royal Challengers Bengaluru for 21 Crore!');
+      expect(harness.spokenUtterances[0].text).toBe('Rohit Sharma sold to MI.');
       expect(harness.spokenUtterances[0].priority).toBe('RESULT');
-      expect(harness.spokenUtterances[0].rate).toBe(1.0); // Preserved at natural 1.0x
+      expect(harness.spokenUtterances[0].rate).toBe(3.0);
     });
 
-    it('speaks unsold announcement at natural 1.0x rate even when 2.0x Blitz is active', () => {
-      harness.setTimerSpeed(2.0);
+    it('does NOT speak live bids', () => {
+      harness.announceBid('CSK', 20000000, 'lot-1');
+      expect(harness.spokenUtterances).toHaveLength(0);
+    });
+
+    it('does NOT speak unsold player results', () => {
       harness.announceUnsold('Steve Smith');
+      expect(harness.spokenUtterances).toHaveLength(0);
+    });
 
-      expect(harness.spokenUtterances).toHaveLength(1);
-      expect(harness.spokenUtterances[0].text).toBe('Steve Smith unsold.');
-      expect(harness.spokenUtterances[0].priority).toBe('RESULT');
-      expect(harness.spokenUtterances[0].rate).toBe(1.0); // Preserved at natural 1.0x
+    it('does NOT speak round transitions or recall announcements', () => {
+      harness.announceAcceleratedRound(2, 15);
+      harness.announceRoundCompleted(1, 10, 30);
+      harness.announcePlayerRecalled('David Warner');
+      expect(harness.spokenUtterances).toHaveLength(0);
     });
   });
 
-  describe('3. Dynamic Speed Changes & Mid-Countdown Invalidation', () => {
-    it('immediately cancels obsolete countdown speech when Blitz speed changes mid-countdown', () => {
-      harness.announceCountdown(3, 'lot-1', 1.0);
-      expect(harness.currentPriority).toBe('COUNTDOWN');
-      expect(harness.cancelledCount).toBe(0);
-
-      // Speed changed to 2.0x Blitz by host
-      harness.setTimerSpeed(2.0);
-      expect(harness.cancelledCount).toBe(1);
-      expect(harness.currentPriority).toBeNull();
-      expect(harness.activeTimerSpeed).toBe(2.0);
-
-      // Next tick immediately adopts the new 2.0x Blitz rate
-      harness.announceCountdown(2, 'lot-1');
-      expect(harness.spokenUtterances).toHaveLength(2);
-      expect(harness.spokenUtterances[1].text).toBe('2');
-      expect(harness.spokenUtterances[1].rate).toBe(2.0);
-    });
-  });
-
-  describe('4. Real-Time Countdown Synchronization & Outdated Number Skipping', () => {
-    it('skips outdated countdown numbers when an utterance cannot finish before next tick', () => {
-      // Tick 5 begins speaking at 2.0x Blitz
-      harness.announceCountdown(5, 'lot-1', 2.0);
+  describe('4. Countdown Deduplication and Outdated Tick Skipping', () => {
+    it('skips outdated countdown numbers when utterance is currently active', () => {
+      harness.announceCountdown(5, 'lot-1');
       expect(harness.spokenUtterances).toHaveLength(1);
       expect(harness.spokenUtterances[0].text).toBe('5');
 
-      // Tick 4 arrives before 5 finishes: 4 is skipped to prevent lag and drift
-      harness.announceCountdown(4, 'lot-1', 2.0);
-      expect(harness.spokenUtterances).toHaveLength(1); // 4 skipped!
+      // Tick 4 arrives before 5 finishes: 4 is skipped to prevent lag
+      harness.announceCountdown(4, 'lot-1');
+      expect(harness.spokenUtterances).toHaveLength(1);
 
-      // 5 finishes speaking
+      // Utterance finishes
       harness.simulateUtteranceEnd();
 
       // Tick 3 arrives: voice is free and speaks 3
-      harness.announceCountdown(3, 'lot-1', 2.0);
+      harness.announceCountdown(3, 'lot-1');
       expect(harness.spokenUtterances).toHaveLength(2);
       expect(harness.spokenUtterances[1].text).toBe('3');
-
-      // 3 finishes speaking
-      harness.simulateUtteranceEnd();
-
-      // Tick 2 arrives: speaks 2
-      harness.announceCountdown(2, 'lot-1', 2.0);
-      expect(harness.spokenUtterances).toHaveLength(3);
-      expect(harness.spokenUtterances[2].text).toBe('2');
     });
 
     it('drops duplicate and out-of-order stale ticks', () => {
-      harness.announceCountdown(5, 'lot-1', 1.0);
+      harness.announceCountdown(5, 'lot-1');
       harness.simulateUtteranceEnd();
 
-      harness.announceCountdown(5, 'lot-1', 1.0); // Duplicate
-      harness.announceCountdown(3, 'lot-1', 1.0); // Skipped 4
+      harness.announceCountdown(5, 'lot-1'); // Duplicate
+      harness.announceCountdown(3, 'lot-1'); // Valid drop to 3
       harness.simulateUtteranceEnd();
 
-      harness.announceCountdown(4, 'lot-1', 1.0); // Stale / out of order
+      harness.announceCountdown(4, 'lot-1'); // Stale out of order (4 after 3)
 
       expect(harness.spokenUtterances.map((u) => u.text)).toEqual(['5', '3']);
     });
+
+    it('deduplicates nomination announcements for the same lot', () => {
+      harness.announceNomination('Virat Kohli', 'lot-1');
+      harness.simulateUtteranceEnd();
+
+      harness.announceNomination('Virat Kohli', 'lot-1'); // Duplicate nomination event
+      expect(harness.spokenUtterances).toHaveLength(1);
+    });
   });
 
-  describe('5. Safety & Transition Protection', () => {
-    it('new player nomination is NOT blocked by earlier lot sale result', () => {
-      harness.announceSold('Rohit Sharma', 'Mumbai Indians', 160000000);
+  describe('5. Voice Conflict Prevention & Priority Protection', () => {
+    it('countdown ticks NEVER cancel or interrupt active player nomination speech', () => {
+      harness.announceNomination('Virat Kohli', 'lot-1');
+      expect(harness.currentPriority).toBe('NOMINATION');
+
+      // Countdown tick arrives while nomination is active
+      harness.announceCountdown(5, 'lot-1');
+      expect(harness.spokenUtterances).toHaveLength(1);
+      expect(harness.spokenUtterances[0].text).toBe('Virat Kohli.');
+      expect(harness.currentPriority).toBe('NOMINATION');
+    });
+
+    it('countdown ticks NEVER cancel or interrupt active player sold speech', () => {
+      harness.announceSold('Virat Kohli', 'Royal Challengers Bengaluru');
       expect(harness.currentPriority).toBe('RESULT');
 
-      harness.announceNomination('Jasprit Bumrah', 'BOWLER', 'lot-2');
+      // Late countdown tick arrives while sold is active
+      harness.announceCountdown(0, 'lot-1');
+      expect(harness.spokenUtterances).toHaveLength(1);
+      expect(harness.spokenUtterances[0].text).toBe('Virat Kohli sold to Royal Challengers Bengaluru.');
+      expect(harness.currentPriority).toBe('RESULT');
+    });
+
+    it('new nomination clears countdown state and starts fresh for the lot', () => {
+      harness.announceCountdown(3, 'lot-1');
+      expect(harness.spokenUtterances).toHaveLength(1);
+      expect(harness.cancelledCount).toBe(0);
+
+      // New nomination for lot-2
+      harness.announceNomination('Jasprit Bumrah', 'lot-2');
+      expect(harness.cancelledCount).toBe(1); // Countdown cancelled for new lot
       expect(harness.spokenUtterances).toHaveLength(2);
-      expect(harness.spokenUtterances[1].text).toBe('Jasprit Bumrah, Bowler.');
+      expect(harness.spokenUtterances[1].text).toBe('Jasprit Bumrah.');
       expect(harness.spokenUtterances[1].priority).toBe('NOMINATION');
     });
 
-    it('new bid immediately cancels active countdown', () => {
-      harness.announceCountdown(2, 'lot-1', 1.5);
-      expect(harness.currentPriority).toBe('COUNTDOWN');
-
-      harness.announceBid('CSK', 50000000, 'lot-1');
-      expect(harness.cancelledCount).toBe(1);
-      expect(harness.currentPriority).toBe('BID');
-      expect(harness.spokenUtterances.map((u) => u.text)).toEqual(['2', 'CSK 5 Crore']);
-    });
-
-    it('mute suppresses all vocalization', () => {
+    it('mute suppresses all announcements', () => {
       harness.enabled = false;
-      harness.announceNomination('Virat Kohli', 'BATSMAN', 'lot-1');
-      harness.announceCountdown(5, 'lot-1', 2.0);
+      harness.announceNomination('Virat Kohli', 'lot-1');
+      harness.announceCountdown(5, 'lot-1');
+      harness.announceSold('Virat Kohli', 'RCB');
       expect(harness.spokenUtterances).toHaveLength(0);
     });
   });

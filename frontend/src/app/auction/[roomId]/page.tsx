@@ -150,7 +150,7 @@ export default function LiveAuctionArenaPage() {
           if (canonicalId && canonicalId !== lastAnnouncedPlayerIdRef.current) {
             lastAnnouncedPlayerIdRef.current = canonicalId;
             setTimeout(() => {
-              auctioneerVoice.announceNomination(cap.player.name, cap.player.role, canonicalId);
+              auctioneerVoice.announceNomination(cap.player.name, canonicalId);
             }, 300);
           }
         }
@@ -172,13 +172,13 @@ export default function LiveAuctionArenaPage() {
           }
         };
 
-        // 1. Timer countdown: Loud countdown for last 5 to 0 seconds (5, 4, 3, 2, 1, 0) synchronized with Blitz speed
+        // 1. Timer countdown: Loud countdown for last 5 to 0 seconds (5, 4, 3, 2, 1, 0)
         socket.on('timer_tick', (data: { remainingSeconds: number; speedMultiplier?: number }) => {
           setTimer(data.remainingSeconds);
           if (data.speedMultiplier) {
             useAuctionStore.getState().setSpeedMultiplier(data.speedMultiplier);
           }
-          auctioneerVoice.onTimerTick(data.remainingSeconds, data.speedMultiplier);
+          auctioneerVoice.onTimerTick(data.remainingSeconds);
 
           const currentRoom = useAuctionStore.getState().room;
           const currentAP = useAuctionStore.getState().currentAuctionPlayer;
@@ -186,7 +186,7 @@ export default function LiveAuctionArenaPage() {
           const isPlayerNominated = currentAP?.status === 'NOMINATED';
 
           if (isAuctionActive && isPlayerNominated && data.remainingSeconds <= 5 && data.remainingSeconds >= 0) {
-            auctioneerVoice.announceCountdown(data.remainingSeconds, currentAP?.id, data.speedMultiplier);
+            auctioneerVoice.announceCountdown(data.remainingSeconds, currentAP?.id);
           } else if (data.remainingSeconds > 5) {
             auctioneerVoice.resetCountdown();
           }
@@ -205,22 +205,13 @@ export default function LiveAuctionArenaPage() {
           }
         });
 
-        // 2. Bid placed: Speak out Team and Amount in natural voice (e.g. "CSK 2 Crore" or "MI 40 Crore")
+        // 2. Bid placed: Update store (bids not spoken per 3-type voice specification)
         socket.on('bid_placed', (data: any) => {
           clearZeroFallback();
           onBidPlaced(data);
-          const teamShort =
-            data.team?.shortName ||
-            data.bid?.team?.shortName ||
-            data.team?.name ||
-            data.bid?.team?.name ||
-            'Bidder';
-          const bidAmount = Number(data.amount || data.bidAmount || data.bid?.amount || 0);
-          const activePlayerId = useAuctionStore.getState().currentAuctionPlayer?.id;
-          auctioneerVoice.announceBid(teamShort, bidAmount, activePlayerId);
         });
 
-        // 3. Player nominated: Full player name & type (e.g. "Virat Kohli, Batsman")
+        // 3. Player nominated: Full player name (e.g. "Virat Kohli.")
         socket.on('player_nominated', (data: any) => {
           clearZeroFallback();
           onPlayerNominated(data);
@@ -229,14 +220,13 @@ export default function LiveAuctionArenaPage() {
           const p = ap?.player;
           const canonicalId = ap?.id || p?.id;
           const playerName = p?.name || ap?.name;
-          const playerRole = p?.role || ap?.role;
           if (playerName) {
             lastAnnouncedPlayerIdRef.current = canonicalId;
-            auctioneerVoice.announceNomination(playerName, playerRole, canonicalId);
+            auctioneerVoice.announceNomination(playerName, canonicalId);
           }
         });
 
-        // 4. Sold: Clearly announce player name, winning franchise, and final sale amount
+        // 4. Sold: Announce player name and winning franchise (e.g. "Virat Kohli sold to Royal Challengers Bengaluru.")
         socket.on('player_sold', (data: any) => {
           clearZeroFallback();
           onPlayerSold(data);
@@ -269,30 +259,17 @@ export default function LiveAuctionArenaPage() {
             currentAP?.player?.name ||
             'Player';
 
-          const soldPrice = Number(
-            data.soldPrice ??
-            data.auctionPlayer?.soldPrice ??
-            currentAP?.soldPrice ??
-            0
-          );
-
           lastAnnouncedPlayerIdRef.current = null;
 
-          auctioneerVoice.announceSold(playerName, teamName, soldPrice);
+          auctioneerVoice.announceSold(playerName, teamName);
         });
 
-        // 5. Unsold: Announce player unsold result
+        // 5. Unsold: Update store (unsold results not spoken per 3-type voice specification)
         socket.on('player_unsold', (data: any) => {
           clearZeroFallback();
           onPlayerUnsold(data);
           auctioneerVoice.stopCountdown();
           lastAnnouncedPlayerIdRef.current = null;
-          const currentAP = useAuctionStore.getState().currentAuctionPlayer;
-          const playerName =
-            data.auctionPlayer?.player?.name ||
-            currentAP?.player?.name ||
-            'Player';
-          auctioneerVoice.announceUnsold(playerName);
         });
 
         socket.on('auction_paused', (data: any) => {
@@ -336,7 +313,6 @@ export default function LiveAuctionArenaPage() {
         socket.on('auction_speed_changed', (data: any) => {
           if (data?.speedMultiplier) {
             useAuctionStore.getState().setSpeedMultiplier(data.speedMultiplier);
-            auctioneerVoice.setTimerSpeed(data.speedMultiplier);
           }
           triggerHostAlert(data?.message || `⚡ Auction speed changed to ${data?.speedMultiplier}x Blitz!`, 'blitz');
         });
@@ -369,17 +345,14 @@ export default function LiveAuctionArenaPage() {
         // Accelerated Round & Player Recall Events
         socket.on('round_completed', (data: any) => {
           useAuctionStore.getState().onRoundCompleted(data);
-          auctioneerVoice.announceRoundCompleted(data.round, data.unsoldAvailable, data.intermissionSeconds);
         });
 
         socket.on('accelerated_round_started', (data: any) => {
           useAuctionStore.getState().onAcceleratedRoundStarted(data);
-          auctioneerVoice.announceAcceleratedRound(data.round, data.timerSeconds);
         });
 
         socket.on('player_recalled', (data: any) => {
           useAuctionStore.getState().onPlayerRecalled(data);
-          auctioneerVoice.announcePlayerRecalled(data.auctionPlayer?.player?.name || 'Player');
         });
 
         // 6. Real-time Room Messages
