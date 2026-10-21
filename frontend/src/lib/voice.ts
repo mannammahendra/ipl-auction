@@ -101,7 +101,7 @@ export function mapPlayerRole(rawRole?: string): string | null {
 class AuctioneerVoiceService {
   private enabled: boolean = true;
   private voicePack: VoicePack = 'ELLIE_GOULDING';
-  private rate: number = 1.0; // Existing commentary speech rate for announcements (player, role, bid, sale)
+  private rate: number = 3.0; // Fixed 3.0x commentary pace as requested
   private pitch: number = 1.08; // Ellie Goulding airy melodic soprano pitch
   private volume: number = 1.0;
   private allVoices: SpeechSynthesisVoice[] = [];
@@ -129,14 +129,8 @@ class AuctioneerVoiceService {
         this.voicePack = 'ELLIE_GOULDING';
         localStorage.setItem('ipl_voice_pack', 'ELLIE_GOULDING');
 
-        const savedRate = localStorage.getItem('ipl_voice_rate');
-        if (savedRate) {
-          const parsed = parseFloat(savedRate);
-          this.rate = !isNaN(parsed) && parsed >= 0.5 && parsed <= 2.5 ? parsed : 1.0;
-        } else {
-          this.rate = 1.0;
-        }
-        localStorage.setItem('ipl_voice_rate', String(this.rate));
+        this.rate = 3.0;
+        localStorage.setItem('ipl_voice_rate', '3.0');
 
         const savedPitch = localStorage.getItem('ipl_voice_pitch');
         if (savedPitch) {
@@ -294,15 +288,13 @@ class AuctioneerVoiceService {
   }
 
   public getRate(): number {
-    return this.rate;
+    return 3.0;
   }
 
-  public setRate(rate: number) {
-    if (rate > 0) {
-      this.rate = rate;
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('ipl_voice_rate', String(rate));
-      }
+  public setRate(_rate: number) {
+    this.rate = 3.0;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ipl_voice_rate', '3.0');
     }
   }
 
@@ -388,7 +380,7 @@ class AuctioneerVoiceService {
       this.initVoices();
     }
     if (this.allVoices.length === 0) {
-      return { voice: null, pitch: this.pitch, rate: this.rate };
+      return { voice: null, pitch: this.pitch, rate: 3.0 };
     }
 
     const scored = this.allVoices.map((v) => ({
@@ -399,7 +391,7 @@ class AuctioneerVoiceService {
     return {
       voice: scored[0]?.voice || null,
       pitch: this.pitch,
-      rate: this.rate,
+      rate: 3.0,
     };
   }
 
@@ -533,11 +525,7 @@ class AuctioneerVoiceService {
       utterance.voice = profile.voice;
     }
     utterance.pitch = profile.pitch;
-
-    // Apply 3.0x specifically to timer countdown announcements
-    // Player names, roles, bids, and sold announcements retain their existing speech rate
-    const effectiveRate = priority === 'COUNTDOWN' ? 3.0 : (this.rate || 1.0);
-    utterance.rate = effectiveRate;
+    utterance.rate = 3.0; // Strictly apply 3.0x speed directly to every utterance
     utterance.volume = forceLoud ? 1.0 : this.volume;
 
     // Retain in memory to prevent Chrome GC bug cutting off utterance
@@ -547,7 +535,7 @@ class AuctioneerVoiceService {
     utterance.onstart = () => {
       this.isSpeakingActive = true;
       this.pendingText = null;
-      console.log(`[Speech] Started speaking: "${text}" (${priority}, rate=${effectiveRate}x)`);
+      console.log(`[Speech] Started speaking: "${text}" (${priority}, rate=3.0x)`);
     };
     utterance.onend = () => {
       this.currentUtterance = null;
@@ -577,8 +565,8 @@ class AuctioneerVoiceService {
       console.warn(`[Speech] Speech error: "${e.error}" for "${text}"`);
     };
 
-    // Fast safety timeouts (prevents locks without waiting)
-    const safetyMs = priority === 'COUNTDOWN' ? 450 : priority === 'BID' ? 1200 : 2500;
+    // Fast 3.0x speech safety timeouts (prevents locks without waiting)
+    const safetyMs = priority === 'COUNTDOWN' ? 450 : priority === 'BID' ? 800 : 2000;
     this.prioritySafetyTimeout = setTimeout(() => {
       this.isSpeakingActive = false;
       if (this.currentPriority === priority) {
@@ -632,8 +620,8 @@ class AuctioneerVoiceService {
     // Check if voice is genuinely still active from a previous countdown number
     const now = Date.now();
     const timeSinceLastCountdown = now - this.lastCountdownSpokenAt;
-    // Single digit at 3.0x takes ~100-120ms. If at least 220ms have passed, the user has heard the previous digit.
-    if (this.currentPriority === 'COUNTDOWN' && this.isSpeakingActive && timeSinceLastCountdown < 220) {
+    // Single digit at 3.0x takes ~120ms. If at least 320ms have passed, the user has heard the previous digit.
+    if (this.currentPriority === 'COUNTDOWN' && this.isSpeakingActive && timeSinceLastCountdown < 320) {
       console.warn(`[Countdown] Skipped number ${seconds}: browser speech synthesis still rendering previous digit (${timeSinceLastCountdown}ms elapsed)`);
       return;
     }
