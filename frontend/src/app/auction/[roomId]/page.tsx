@@ -186,7 +186,7 @@ export default function LiveAuctionArenaPage() {
           const isPlayerNominated = currentAP?.status === 'NOMINATED';
 
           if (isAuctionActive && isPlayerNominated && data.remainingSeconds <= 5 && data.remainingSeconds >= 0) {
-            auctioneerVoice.announceCountdown(data.remainingSeconds, currentAP?.id);
+            auctioneerVoice.announceCountdown(data.remainingSeconds, currentAP?.id, data.speedMultiplier);
           } else if (data.remainingSeconds > 5) {
             auctioneerVoice.resetCountdown();
           }

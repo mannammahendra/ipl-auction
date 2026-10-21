@@ -384,6 +384,11 @@ class AuctioneerVoiceService {
   public setTimerSpeed(speedMultiplier: number) {
     if (speedMultiplier && speedMultiplier >= 1.0) {
       this.activeTimerSpeed = speedMultiplier;
+      // When Blitz speed changes mid-countdown, stop obsolete countdown speech
+      // so next tick uses the new schedule without resetting the auction timer
+      if (this.currentPriority === 'COUNTDOWN') {
+        this.stopCountdown();
+      }
     }
   }
 
@@ -417,9 +422,18 @@ class AuctioneerVoiceService {
     this.recentBidTimes = [];
   }
 
-  // Returns natural 1x speech rate (decoupled from timer speed and Blitz mode)
-  public computeDynamicRate(): number {
-    return this.rate || 1.0;
+  // Returns rate for a given speech priority and speed multiplier:
+  // ONLY countdown timing accelerates with Blitz speed!
+  // Player nomination, bids, and sale results ALWAYS speak at natural 1x rate.
+  public computeDynamicRate(priority: SpeechPriority, speedMultiplier?: number): number {
+    const base = this.rate || 1.0;
+    if (priority === 'COUNTDOWN') {
+      const mult = Math.max(1.0, speedMultiplier || this.activeTimerSpeed || 1.0);
+      const computed = parseFloat((base * mult).toFixed(2));
+      return Math.min(2.5, Math.max(1.0, computed));
+    }
+    // Nomination, Bid, Result: always natural base rate (1.0x)
+    return base;
   }
 
   // Fast, reliable vocalization engineered with priority hierarchy
@@ -427,7 +441,8 @@ class AuctioneerVoiceService {
     text: string,
     forceLoud: boolean = false,
     overrideRate?: number,
-    priority: SpeechPriority = 'BID'
+    priority: SpeechPriority = 'BID',
+    speedMultiplier?: number
   ) {
     if (!this.enabled || typeof window === 'undefined' || !window.speechSynthesis) return;
 
@@ -472,6 +487,10 @@ class AuctioneerVoiceService {
       }
     } catch (e) {}
 
+    const effectiveRate = overrideRate !== undefined
+      ? overrideRate
+      : this.computeDynamicRate(priority, speedMultiplier);
+
     const utterance = new SpeechSynthesisUtterance(text);
     const profile = this.getActiveVoiceProfile();
 
@@ -479,7 +498,7 @@ class AuctioneerVoiceService {
       utterance.voice = profile.voice;
     }
     utterance.pitch = profile.pitch;
-    utterance.rate = this.rate;
+    utterance.rate = effectiveRate;
     utterance.volume = forceLoud ? 1.0 : this.volume;
 
     // Retain in memory to prevent Chrome GC bug cutting off utterance
@@ -517,7 +536,13 @@ class AuctioneerVoiceService {
     };
 
     // Safety timeout to avoid priority deadlocks if browser never fires onend
-    const safetyMs = priority === 'COUNTDOWN' ? 900 : priority === 'BID' ? 2500 : 3500;
+    const activeMult = Math.max(1.0, speedMultiplier || this.activeTimerSpeed || 1.0);
+    const safetyMs = priority === 'COUNTDOWN'
+      ? Math.max(300, Math.round(900 / activeMult))
+      : priority === 'BID'
+      ? 2500
+      : 3500;
+
     this.prioritySafetyTimeout = setTimeout(() => {
       this.isSpeakingActive = false;
       if (this.currentPriority === priority) {
@@ -590,10 +615,14 @@ class AuctioneerVoiceService {
     this.speak(`${cleanTeam} ${price}`, false, this.rate, 'BID');
   }
 
-  // 3. Final countdown: 5 to 0 at natural 1x voice speed
+  // 3. Final countdown: 5 to 0 accelerated with Blitz timer speed (1x, 1.25x, 1.5x, 2x)
   // If nomination or sale is active, skips countdown to preserve critical speech
-  public announceCountdown(seconds: number, lotId?: string) {
+  public announceCountdown(seconds: number, lotId?: string, speedMultiplier?: number) {
     if (!this.enabled || seconds < 0 || seconds > 5) return;
+
+    if (speedMultiplier && speedMultiplier >= 1.0) {
+      this.activeTimerSpeed = speedMultiplier;
+    }
 
     // Critical announcements take precedence: never interrupt nomination or sale results
     if (this.currentPriority === 'NOMINATION' || this.currentPriority === 'RESULT') {
@@ -626,7 +655,9 @@ class AuctioneerVoiceService {
 
     const spokenText = this.getCountdownSpokenText(seconds);
     if (spokenText) {
-      this.speak(spokenText, true, this.rate, 'COUNTDOWN');
+      const mult = speedMultiplier || this.activeTimerSpeed || 1.0;
+      const rate = this.computeDynamicRate('COUNTDOWN', mult);
+      this.speak(spokenText, true, rate, 'COUNTDOWN', mult);
     }
   }
 
