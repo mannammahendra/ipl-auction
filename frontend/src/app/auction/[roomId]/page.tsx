@@ -17,7 +17,6 @@ import { AuctionPoolRecordsModal } from '../../../components/AuctionPoolRecordsM
 import { MicrophoneControl } from '../../../components/MicrophoneControl';
 import { voiceChatManager } from '../../../lib/voiceChat';
 import { auctioneerVoice } from '../../../lib/voice';
-import { VoiceSettingsModal } from '../../../components/VoiceSettingsModal';
 import { RoomChatDrawer } from '../../../components/RoomChatDrawer';
 import { FloatingAuctionBar } from '../../../components/FloatingAuctionBar';
 import { PurseRadarModal } from '../../../components/PurseRadarModal';
@@ -27,7 +26,6 @@ import {
   AlertCircle,
   Volume2,
   VolumeX,
-  Settings2,
   ArrowLeft,
   Trophy,
   Activity,
@@ -81,7 +79,6 @@ export default function LiveAuctionArenaPage() {
   const [hostAlert, setHostAlert] = useState<{ id: string; message: string; type?: string } | null>(null);
 
   const [voiceEnabled, setVoiceEnabled] = useState(true);
-  const [voiceSettingsOpen, setVoiceSettingsOpen] = useState(false);
   const lastAnnouncedPlayerIdRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -657,15 +654,6 @@ setLoading(false); // Instant render - never leave user staring at a spinner
                 )}
               </button>
 
-              {/* VOICE SETTINGS BUTTON */}
-              <button
-                onClick={() => setVoiceSettingsOpen(true)}
-                className="p-1 rounded-md bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-all active:scale-95 shrink-0 shadow-sm"
-                title="Voice Announcement Settings"
-              >
-                <Settings2 className="w-3.5 h-3.5 text-amber-400" />
-              </button>
-
               {/* 3. LIVE MICROPHONE (Voice Chat) */}
               <MicrophoneControl roomId={roomId} />
 
@@ -887,11 +875,6 @@ setLoading(false); // Instant render - never leave user staring at a spinner
         isOpen={!!squadPosterTeam}
         onClose={() => setSquadPosterTeam(null)}
         team={squadPosterTeam}
-      />
-          <VoiceSettingsModal
-        isOpen={voiceSettingsOpen}
-        onClose={() => setVoiceSettingsOpen(false)}
-        onSettingsChanged={() => setVoiceEnabled(auctioneerVoice.isEnabled())}
       />
     </div>
   );

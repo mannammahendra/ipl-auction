@@ -1,6 +1,6 @@
 // Cricket Auction Voice Announcement Engine
-// Professional, energetic female Indian English auctioneer commentary
-// Fast 2.0x default commentary pace completely independent of auction countdown / blitz speed
+// Dedicated Single Female English Auctioneer Voice @ 2.0x Speed
+// Independent of blitz countdown timer, zero settings complexity, one-click mute/unmute
 
 export type SpeechPriority = 'INFO' | 'COUNTDOWN' | 'NOMINATION' | 'BID' | 'RESULT';
 
@@ -11,15 +11,6 @@ export const PRIORITY_ORDER: Record<SpeechPriority, number> = {
   BID: 4,
   RESULT: 5,
 };
-
-export interface VoiceSettings {
-  enabled: boolean;
-  rate: number; // Normal voice speed, default 2.0x
-  pitch: number; // Voice pitch, default 1.0x
-  volume: number; // Voice volume, default 0.85 (85%)
-  voiceURI: string | null;
-  countdownEnabled: boolean;
-}
 
 export function toTeamShortCode(rawName?: string): string {
   if (!rawName) return 'Franchise';
@@ -144,13 +135,13 @@ export function formatRupeesSpoken(amount: number): string {
 
 class AuctioneerVoiceService {
   private enabled: boolean = true;
-  private rate: number = 2.0; // Strictly 2.0x default voice playback rate
-  private pitch: number = 1.0; // 1.0x normal pitch
-  private volume: number = 0.85; // 85% volume
-  private countdownEnabled: boolean = true;
-  private selectedVoiceURI: string | null = null;
+  private readonly rate: number = 2.0; // Strictly 2.0x normal voice speed
+  private readonly pitch: number = 1.0; // Normal natural pitch
+  private readonly volume: number = 0.85; // 85% volume
+  private readonly countdownEnabled: boolean = true;
   private allVoices: SpeechSynthesisVoice[] = [];
-  private activeUtterances = new Set<SpeechSynthesisUtterance>(); // Prevents V8 garbage collection!
+  private dedicatedVoice: SpeechSynthesisVoice | null = null;
+  private activeUtterances = new Set<SpeechSynthesisUtterance>(); // Prevents V8 GC collection
   private currentPriority: SpeechPriority | null = null;
   private isSpeakingActive: boolean = false;
   private pendingTimeout: any = null;
@@ -170,37 +161,6 @@ class AuctioneerVoiceService {
         if (savedEnabled !== null) {
           this.enabled = savedEnabled === 'true';
         }
-
-        const savedRate = localStorage.getItem('ipl_voice_rate');
-        if (savedRate) {
-          const parsedRate = parseFloat(savedRate);
-          this.rate = !isNaN(parsedRate) && parsedRate > 0 ? parsedRate : 2.0;
-        } else {
-          this.rate = 2.0;
-        }
-
-        const savedPitch = localStorage.getItem('ipl_voice_pitch');
-        if (savedPitch) {
-          const parsedPitch = parseFloat(savedPitch);
-          this.pitch = !isNaN(parsedPitch) && parsedPitch > 0 ? parsedPitch : 1.0;
-        } else {
-          this.pitch = 1.0;
-        }
-
-        const savedVolume = localStorage.getItem('ipl_voice_volume');
-        if (savedVolume) {
-          const parsedVol = parseFloat(savedVolume);
-          this.volume = !isNaN(parsedVol) && parsedVol >= 0 && parsedVol <= 1 ? parsedVol : 0.85;
-        } else {
-          this.volume = 0.85;
-        }
-
-        const savedCountdown = localStorage.getItem('ipl_voice_countdown_enabled');
-        if (savedCountdown !== null) {
-          this.countdownEnabled = savedCountdown === 'true';
-        }
-
-        this.selectedVoiceURI = localStorage.getItem('ipl_voice_uri');
       } catch {}
 
       this.initVoices();
@@ -242,6 +202,8 @@ class AuctioneerVoiceService {
       const v = window.speechSynthesis.getVoices();
       if (v && v.length > 0) {
         this.allVoices = v;
+        this.dedicatedVoice = null; // Re-evaluate voice on voice list reload
+        this.getDedicatedFemaleEnglishVoice();
       }
     } catch {}
   }
@@ -258,51 +220,74 @@ class AuctioneerVoiceService {
     return this.allVoices;
   }
 
-  // Select the best available female Indian English voice, or closest supported English female voice
-  public getBestIndianFemaleVoice(): SpeechSynthesisVoice | null {
+  // Exactly ONE Dedicated Female English Voice across all operating systems & browsers
+  public getDedicatedFemaleEnglishVoice(): SpeechSynthesisVoice | null {
+    if (this.dedicatedVoice) {
+      return this.dedicatedVoice;
+    }
+
     const voices = this.getVoices();
     if (!voices || voices.length === 0) return null;
 
-    if (this.selectedVoiceURI) {
-      const explicit = voices.find((v) => v.voiceURI === this.selectedVoiceURI);
-      if (explicit) return explicit;
-    }
-
+    // Platform-specific female voice keywords:
+    // Windows: "Microsoft Zira Desktop" / "Microsoft Zira - English (United States)"
+    // macOS / iOS: "Samantha", "Victoria", "Karen", "Tessa", "Moira", "Fiona"
+    // Chrome / Android: "Google US English Female", "Google UK English Female", "Natural"
+    // Edge: "Microsoft Jenny Online (Natural)", "Microsoft Aria Online (Natural)"
     const femaleKeywords = [
-      'female', 'woman', 'girl', 'heera', 'kavya', 'veena', 'neerja', 'aditi',
-      'kalpana', 'priya', 'ananya', 'zira', 'samantha', 'victoria', 'sonia', 'serena',
+      'zira',
+      'samantha',
+      'victoria',
+      'karen',
+      'tessa',
+      'moira',
+      'fiona',
+      'aria',
+      'jenny',
+      'heera',
+      'kavya',
+      'veena',
+      'neerja',
+      'aditi',
+      'female',
+      'woman',
+      'girl',
     ];
 
-    let bestVoice: SpeechSynthesisVoice | null = null;
-    let highestScore = -1;
-
+    // 1. Highest priority: English voice matching female keywords
     for (const v of voices) {
       const lang = (v.lang || '').toLowerCase();
       const name = (v.name || '').toLowerCase();
-      let score = 0;
-
-      const isIndianLang = lang.includes('en-in') || lang.includes('hi-in') || lang.includes('en_in');
-      const isEnglish = lang.startsWith('en');
-      const isFemale = femaleKeywords.some((kw) => name.includes(kw));
-      const hasIndianName = name.includes('india') || name.includes('hindi') || name.includes('heera') || name.includes('kavya') || name.includes('veena') || name.includes('neerja');
-
-      if (isIndianLang && isFemale) score += 150;
-      else if (isIndianLang) score += 100;
-      else if (hasIndianName) score += 80;
-      else if (isEnglish && isFemale) score += 50;
-      else if (isEnglish) score += 20;
-
-      if (name.includes('natural') || name.includes('online') || name.includes('google') || name.includes('microsoft')) {
-        score += 10;
-      }
-
-      if (score > highestScore) {
-        highestScore = score;
-        bestVoice = v;
+      if (lang.startsWith('en') && femaleKeywords.some((kw) => name.includes(kw))) {
+        this.dedicatedVoice = v;
+        return v;
       }
     }
 
-    return bestVoice || voices[0] || null;
+    // 2. Secondary: Any voice matching female keywords
+    for (const v of voices) {
+      const name = (v.name || '').toLowerCase();
+      if (femaleKeywords.some((kw) => name.includes(kw))) {
+        this.dedicatedVoice = v;
+        return v;
+      }
+    }
+
+    // 3. Fallback: Any English voice
+    const anyEnglish = voices.find((v) => (v.lang || '').toLowerCase().startsWith('en'));
+    if (anyEnglish) {
+      this.dedicatedVoice = anyEnglish;
+      return anyEnglish;
+    }
+
+    // 4. Default: First available voice
+    this.dedicatedVoice = voices[0] || null;
+    return this.dedicatedVoice;
+  }
+
+  // Alias for backward compatibility
+  public getBestIndianFemaleVoice(): SpeechSynthesisVoice | null {
+    return this.getDedicatedFemaleEnglishVoice();
   }
 
   public isEnabled(): boolean {
@@ -312,7 +297,9 @@ class AuctioneerVoiceService {
   public setEnabled(val: boolean) {
     this.enabled = val;
     if (typeof window !== 'undefined') {
-      localStorage.setItem('ipl_voice_enabled', String(val));
+      try {
+        localStorage.setItem('ipl_voice_enabled', String(val));
+      } catch {}
       if (!val && window.speechSynthesis) {
         try {
           window.speechSynthesis.cancel();
@@ -337,88 +324,22 @@ class AuctioneerVoiceService {
     return this.rate;
   }
 
-  public setRate(rate: number) {
-    const cleanRate = Math.min(4.0, Math.max(0.5, rate || 2.0));
-    this.rate = cleanRate;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('ipl_voice_rate', String(cleanRate));
-    }
-  }
-
   public getPitch(): number {
     return this.pitch;
-  }
-
-  public setPitch(pitch: number) {
-    const cleanPitch = Math.min(2.0, Math.max(0.5, pitch || 1.0));
-    this.pitch = cleanPitch;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('ipl_voice_pitch', String(cleanPitch));
-    }
   }
 
   public getVolume(): number {
     return this.volume;
   }
 
-  public setVolume(volume: number) {
-    const cleanVolume = Math.min(1.0, Math.max(0.0, volume ?? 0.85));
-    this.volume = cleanVolume;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('ipl_voice_volume', String(cleanVolume));
-    }
-  }
-
   public isCountdownEnabled(): boolean {
     return this.countdownEnabled;
   }
 
-  public setCountdownEnabled(enabled: boolean) {
-    this.countdownEnabled = enabled;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('ipl_voice_countdown_enabled', String(enabled));
-      if (!enabled && this.currentPriority === 'COUNTDOWN') {
-        this.stopCountdown();
-      }
-    }
-  }
-
-  public getSelectedVoiceURI(): string | null {
-    return this.selectedVoiceURI;
-  }
-
-  public setSelectedVoiceURI(uri: string | null) {
-    this.selectedVoiceURI = uri;
-    if (typeof window !== 'undefined') {
-      if (uri) {
-        localStorage.setItem('ipl_voice_uri', uri);
-      } else {
-        localStorage.removeItem('ipl_voice_uri');
-      }
-    }
-  }
-
   public getVoiceName(): string {
-    const voice = this.getBestIndianFemaleVoice();
-    if (!voice) return 'Indian English Female (Default)';
+    const voice = this.getDedicatedFemaleEnglishVoice();
+    if (!voice) return 'Female English (Default)';
     return voice.name;
-  }
-
-  public resetToDefaults() {
-    this.enabled = true;
-    this.rate = 2.0; // Required 3.0x default
-    this.pitch = 1.0; // Required 1.0x pitch
-    this.volume = 0.85; // Required 85% volume
-    this.countdownEnabled = true;
-    this.selectedVoiceURI = null;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('ipl_voice_enabled', 'true');
-      localStorage.setItem('ipl_voice_rate', '2.0');
-      localStorage.setItem('ipl_voice_pitch', '1.0');
-      localStorage.setItem('ipl_voice_volume', '0.85');
-      localStorage.setItem('ipl_voice_countdown_enabled', 'true');
-      localStorage.removeItem('ipl_voice_uri');
-    }
   }
 
   // Timer speed changes must NEVER change voice speed
@@ -515,7 +436,7 @@ class AuctioneerVoiceService {
       return;
     }
 
-    // Always ensure synthesis is not paused
+    // Always ensure synthesis is resumed
     try {
       if (window.speechSynthesis.paused) {
         window.speechSynthesis.resume();
@@ -558,12 +479,11 @@ class AuctioneerVoiceService {
     const utterance = new SpeechSynthesisUtterance(text);
     this.activeUtterances.add(utterance); // Prevent V8 garbage collection of utterance
 
-    const chosenVoice = this.getBestIndianFemaleVoice();
+    const chosenVoice = this.getDedicatedFemaleEnglishVoice();
     if (chosenVoice) {
       utterance.voice = chosenVoice;
       utterance.lang = chosenVoice.lang;
     } else {
-      // Do not force en-IN when no en-IN voice is loaded, use available voice lang or navigator.language
       const fallbackVoices = this.getVoices();
       if (fallbackVoices && fallbackVoices.length > 0) {
         utterance.voice = fallbackVoices[0];
