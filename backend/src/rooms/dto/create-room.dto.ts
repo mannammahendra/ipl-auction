@@ -6,9 +6,9 @@ export class CreateRoomDto {
   @IsString()
   name?: string;
 
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
-  @IsString({ message: 'Password must be a string' })
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : ''))
   @IsNotEmpty({ message: 'Please enter a password to create the auction room.' })
+  @IsString({ message: 'Password must be a string' })
   password: string;
 
   @IsOptional()

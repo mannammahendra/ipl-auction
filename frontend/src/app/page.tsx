@@ -376,18 +376,21 @@ function LandingContent() {
 
 
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5 flex items-center justify-between">
-                    <span>Room Password <span className="text-amber-400 font-black">*</span></span>
-                    <span className="text-[9px] text-amber-400 font-semibold lowercase tracking-normal">(required)</span>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-300 block mb-0.5 flex items-center justify-between">
+                    <span>Room Password (Mandatory) <span className="text-amber-400 font-black">*</span></span>
+                    <span className="text-[9px] text-amber-300 font-bold uppercase tracking-wider bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/40">Mandatory</span>
                   </label>
                   <div className="relative">
                     <input
                       type={showCreatePassword ? 'text' : 'password'}
                       required
-                      placeholder="Enter room password (required)"
+                      placeholder="Enter room password (mandatory)"
                       value={roomPassword}
-                      onChange={(e) => setRoomPassword(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 pr-9 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                      onChange={(e) => {
+                        setRoomPassword(e.target.value);
+                        if (errorMessage) setErrorMessage(null);
+                      }}
+                      className="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 rounded-lg px-3 py-1.5 pr-9 text-xs text-white placeholder-slate-500 focus:outline-none"
                     />
                     <button
                       type="button"
