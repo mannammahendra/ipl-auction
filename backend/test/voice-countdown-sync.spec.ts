@@ -547,4 +547,47 @@ describe('Auction Voice Fix — Timer (3, 2, 1), Live Bids, and Sale Announcemen
       expect(harness.spokenUtterances).toHaveLength(0);
     });
   });
+
+  describe('5. Rate Parity: Countdown Voice Matches Player & Bid Speed at 3.0x', () => {
+    it('applies exactly 3.0x rate across all utterance types (countdown, nomination, bid, sold)', () => {
+      harness.announceNomination('Virat Kohli', 'BATSMAN', 'lot-1');
+      harness.simulateUtteranceEnd();
+
+      harness.announceBid('CSK', 20000000, 'bid-1');
+      harness.simulateUtteranceEnd();
+
+      harness.announceCountdown(3, 'lot-1', 1.0);
+      harness.simulateUtteranceEnd();
+
+      harness.announceSold('MS Dhoni', 'CSK');
+      harness.simulateUtteranceEnd();
+
+      expect(harness.spokenUtterances).toHaveLength(4);
+      harness.spokenUtterances.forEach((u) => {
+        expect(u.rate).toBe(3.0);
+      });
+    });
+
+    it('speaks numbers 3, 2, 1 quickly and sequentially following the timer without delay at 1x and 2x Blitz', () => {
+      // 1x Normal mode
+      harness.resetCountdown();
+      harness.spokenUtterances = [];
+      [3, 2, 1].forEach((sec) => {
+        harness.announceCountdown(sec, 'lot-1', 1.0);
+        harness.simulateUtteranceEnd();
+      });
+      expect(harness.spokenUtterances.map((u) => u.text)).toEqual(['3', '2', '1']);
+      expect(harness.spokenUtterances.every((u) => u.rate === 3.0)).toBe(true);
+
+      // 2x Blitz mode
+      harness.resetCountdown();
+      harness.spokenUtterances = [];
+      [3, 2, 1].forEach((sec) => {
+        harness.announceCountdown(sec, 'lot-2', 2.0);
+        harness.simulateUtteranceEnd();
+      });
+      expect(harness.spokenUtterances.map((u) => u.text)).toEqual(['3', '2', '1']);
+      expect(harness.spokenUtterances.every((u) => u.rate === 3.0)).toBe(true);
+    });
+  });
 });
