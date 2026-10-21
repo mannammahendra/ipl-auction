@@ -657,9 +657,9 @@ setLoading(false); // Instant render - never leave user staring at a spinner
                   )}
                 </button>
 
-                {/* SPEED SELECTOR: 2x | 3x | 4x */}
+                {/* SPEED SELECTOR: 3x | 4x */}
                 <div className="flex items-center border-l border-slate-700 px-0.5 bg-slate-900/60">
-                  {[2, 3, 4].map((spd) => (
+                  {[3, 4].map((spd) => (
                     <button
                       key={spd}
                       onClick={() => {

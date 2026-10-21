@@ -392,22 +392,17 @@ describe('Auction Voice Speed & Countdown Synchronization Test Suite', () => {
     });
   });
 
-  it('supports 2.0x, 3.0x, and 4.0x voice speeds', () => {
+  it('supports 3.0x and 4.0x voice speeds', () => {
     const multiVoice = new AuctioneerVoiceLogicTestHarness();
-    multiVoice.setRate(2.0);
-    expect(multiVoice.getRate()).toBe(2.0);
-    multiVoice.announceNomination('Rohit Sharma', 'Batter', 'lot-2', 20000000);
-    expect(multiVoice.spokenUtterances[0].rate).toBe(2.0);
-
     multiVoice.setRate(3.0);
     expect(multiVoice.getRate()).toBe(3.0);
-    multiVoice.announceBid('RCB', 22000000, false, 'lot-2');
-    expect(multiVoice.spokenUtterances[1].rate).toBe(3.0);
+    multiVoice.announceNomination('Rohit Sharma', 'Batter', 'lot-2', 20000000);
+    expect(multiVoice.spokenUtterances[0].rate).toBe(3.0);
 
     multiVoice.setRate(4.0);
     expect(multiVoice.getRate()).toBe(4.0);
     multiVoice.announceBid('MI', 24000000, false, 'lot-2');
-    expect(multiVoice.spokenUtterances[2].rate).toBe(4.0);
+    expect(multiVoice.spokenUtterances[1].rate).toBe(4.0);
   });
 
   // 10. A new accepted bid during countdown invalidates the old countdown sequence

@@ -1,5 +1,5 @@
 // Cricket Auction Voice Announcement Engine
-// Dedicated Single Female English Auctioneer Voice @ 3.0x / 4.0x / 2.0x Speeds
+// Dedicated Single Female English Auctioneer Voice @ 3.0x / 4.0x Speeds
 // Independent of blitz countdown timer, zero settings complexity, one-click mute/unmute
 // Strict 3 to 1 countdown sequence with reliable per-second delivery
 
@@ -136,7 +136,7 @@ export function formatRupeesSpoken(amount: number): string {
 
 class AuctioneerVoiceService {
   private enabled: boolean = true;
-  private rate: number = 3.0; // Voice speed, default 3.0x, supports 2.0x, 3.0x, 4.0x
+  private rate: number = 3.0; // Voice speed, default 3.0x, supports 3.0x and 4.0x
   private readonly pitch: number = 1.0; // Normal natural pitch
   private readonly volume: number = 0.85; // 85% volume
   private readonly countdownEnabled: boolean = true;
@@ -166,8 +166,10 @@ class AuctioneerVoiceService {
         const savedRate = localStorage.getItem('ipl_voice_rate');
         if (savedRate) {
           const parsed = parseFloat(savedRate);
-          if (!isNaN(parsed) && parsed >= 1 && parsed <= 4) {
+          if (!isNaN(parsed) && (parsed === 3 || parsed === 4)) {
             this.rate = parsed;
+          } else {
+            this.rate = 3.0;
           }
         } else {
           this.rate = 3.0;
@@ -336,7 +338,7 @@ class AuctioneerVoiceService {
   }
 
   public setRate(rate: number) {
-    const cleanRate = Math.min(4.0, Math.max(1.0, rate || 3.0));
+    const cleanRate = rate === 4 ? 4.0 : 3.0;
     this.rate = cleanRate;
     if (typeof window !== 'undefined') {
       try {
