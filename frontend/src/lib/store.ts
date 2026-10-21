@@ -249,7 +249,8 @@ export const useAuctionStore = create<AuctionStore>((set) => ({
 
   // Auction Speed / Blitz Multiplier
   speedMultiplier: 1.0,
-  setSpeedMultiplier: (speedMultiplier) => set({ speedMultiplier }),
+  setSpeedMultiplier: (speedMultiplier) =>
+    set((state) => (state.speedMultiplier === speedMultiplier ? state : { speedMultiplier })),
 
   // Real-time Chat
   messages: [],
@@ -291,10 +292,18 @@ export const useAuctionStore = create<AuctionStore>((set) => ({
     }),
 
   setTimer: (remainingTimer, isTimerPaused) =>
-    set((state) => ({
-      remainingTimer,
-      isTimerPaused: isTimerPaused !== undefined ? isTimerPaused : state.isTimerPaused,
-    })),
+    set((state) => {
+      if (
+        state.remainingTimer === remainingTimer &&
+        (isTimerPaused === undefined || state.isTimerPaused === isTimerPaused)
+      ) {
+        return state;
+      }
+      return {
+        remainingTimer,
+        isTimerPaused: isTimerPaused !== undefined ? isTimerPaused : state.isTimerPaused,
+      };
+    }),
 
   setSoundEnabled: (enabled) => {
     soundFx.enabled = enabled;

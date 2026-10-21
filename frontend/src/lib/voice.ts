@@ -22,6 +22,62 @@ export interface ScoredVoice {
   label: string;
 }
 
+export function mapPlayerRole(rawRole?: string): string | null {
+  if (!rawRole || typeof rawRole !== 'string') return null;
+  const clean = rawRole.toUpperCase().trim().replace(/[\s_-]+/g, '_');
+
+  // Wicketkeeper-Batter (evaluate before Batter to match WK_BATTER, etc.)
+  if (
+    clean === 'WICKET_KEEPER' ||
+    clean === 'WICKETKEEPER' ||
+    clean === 'WK' ||
+    clean === 'WK_BATTER' ||
+    clean === 'WICKET_KEEPER_BATTER' ||
+    clean === 'WICKETKEEPER_BATTER' ||
+    clean.includes('WICKET') ||
+    clean.startsWith('WK')
+  ) {
+    return 'Wicketkeeper-Batter';
+  }
+
+  // All-rounder (evaluate before Batter to match ALL_ROUNDER, etc.)
+  if (
+    clean === 'ALL_ROUNDER' ||
+    clean === 'ALLROUNDER' ||
+    clean === 'ALL_ROUND' ||
+    clean === 'AR' ||
+    clean.includes('ALL_ROUND') ||
+    clean.includes('ALLROUND')
+  ) {
+    return 'All-rounder';
+  }
+
+  // Batter
+  if (
+    clean === 'BATSMAN' ||
+    clean === 'BATSMEN' ||
+    clean === 'BATTER' ||
+    clean === 'BAT' ||
+    clean.includes('BAT')
+  ) {
+    return 'Batter';
+  }
+
+  // Bowler
+  if (
+    clean === 'BOWLER' ||
+    clean === 'BOWL' ||
+    clean === 'SPINNER' ||
+    clean === 'FAST_BOWLER' ||
+    clean === 'SEAMER' ||
+    clean.includes('BOWL')
+  ) {
+    return 'Bowler';
+  }
+
+  return null;
+}
+
 class AuctioneerVoiceService {
   private enabled: boolean = true;
   private voicePack: VoicePack = 'ELLIE_GOULDING';
@@ -35,6 +91,7 @@ class AuctioneerVoiceService {
   private pendingText: string | null = null;
   private lastAnnouncedCountdownNumber: number | null = null;
   private lastAnnouncedCountdownLotId: string | null = null;
+  private lastCountdownSpokenAt: number = 0;
   private currentPriority: SpeechPriority | null = null;
   private prioritySafetyTimeout: any = null;
   private isSpeakingActive: boolean = false;
@@ -394,16 +451,24 @@ class AuctioneerVoiceService {
     // 1. A new NOMINATION represents a new lot state — it invalidates previous speech (including RESULT from earlier lot)
     if (priority === 'NOMINATION') {
       this.currentPriority = 'NOMINATION';
+      try {
+        window.speechSynthesis.cancel();
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+      } catch (e) {}
     } else if (priority === 'RESULT') {
       // Sale result invalidates countdowns
       this.currentPriority = 'RESULT';
+      try {
+        window.speechSynthesis.cancel();
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+      } catch (e) {}
     } else if (priority === 'COUNTDOWN') {
       // Countdown must never interrupt nomination or sale result
       if (this.currentPriority === 'NOMINATION' || this.currentPriority === 'RESULT') {
-        return;
-      }
-      // If voice is currently actively speaking a countdown number, skip outdated intermediate numbers
-      if (this.currentPriority === 'COUNTDOWN' && (this.isSpeakingActive || (typeof window !== 'undefined' && window.speechSynthesis?.speaking))) {
         return;
       }
       this.currentPriority = 'COUNTDOWN';
@@ -417,13 +482,6 @@ class AuctioneerVoiceService {
       clearTimeout(this.prioritySafetyTimeout);
       this.prioritySafetyTimeout = null;
     }
-
-    try {
-      window.speechSynthesis.cancel();
-      if (window.speechSynthesis.paused) {
-        window.speechSynthesis.resume();
-      }
-    } catch (e) {}
 
     const utterance = new SpeechSynthesisUtterance(text);
     const profile = this.getActiveVoiceProfile();
@@ -442,6 +500,7 @@ class AuctioneerVoiceService {
     utterance.onstart = () => {
       this.isSpeakingActive = true;
       this.pendingText = null;
+      console.log(`[Speech] Started speaking: "${text}" (${priority}, rate=3.0x)`);
     };
     utterance.onend = () => {
       this.currentUtterance = null;
@@ -453,6 +512,7 @@ class AuctioneerVoiceService {
       if (this.currentPriority === priority) {
         this.currentPriority = null;
       }
+      console.log(`[Speech] Finished speaking: "${text}" (${priority})`);
     };
     utterance.onerror = (e) => {
       this.currentUtterance = null;
@@ -467,10 +527,11 @@ class AuctioneerVoiceService {
       if (e.error === 'not-allowed') {
         this.pendingText = text;
       }
+      console.warn(`[Speech] Speech error: "${e.error}" for "${text}"`);
     };
 
     // Fast 3.0x speech safety timeouts (prevents locks without waiting)
-    const safetyMs = priority === 'COUNTDOWN' ? 500 : 1800;
+    const safetyMs = priority === 'COUNTDOWN' ? 450 : 2000;
     this.prioritySafetyTimeout = setTimeout(() => {
       this.isSpeakingActive = false;
       if (this.currentPriority === priority) {
@@ -478,26 +539,27 @@ class AuctioneerVoiceService {
       }
     }, safetyMs);
 
-    // Brief micro-delay so audio channel flushes cleanly
-    this.pendingTimeout = setTimeout(() => {
-      this.pendingTimeout = null;
-      if (typeof window !== 'undefined' && window.speechSynthesis && this.enabled) {
-        try {
-          if (window.speechSynthesis.paused) {
-            window.speechSynthesis.resume();
-          }
-          window.speechSynthesis.speak(utterance);
-        } catch (e) {}
+    try {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
       }
-    }, 10);
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {}
   }
 
   // 1. Timer: Announce countdown numbers (5 to 0) at 3.0x speed
-  public announceCountdown(seconds: number, lotId?: string) {
-    if (!this.enabled || seconds < 0 || seconds > 5) return;
+  public announceCountdown(seconds: number, lotId?: string, speedMultiplier: number = 1.0) {
+    console.log(`[Countdown] Event received: remainingSeconds=${seconds}, blitz=${speedMultiplier}x, lotId=${lotId || 'none'}`);
+
+    if (!this.enabled) {
+      console.log(`[Countdown] Skipped number ${seconds}: voice disabled`);
+      return;
+    }
+    if (seconds < 0 || seconds > 5) return;
 
     // Critical announcements take precedence: never interrupt nomination or sale results
     if (this.currentPriority === 'NOMINATION' || this.currentPriority === 'RESULT') {
+      console.log(`[Countdown] Skipped number ${seconds}: higher priority '${this.currentPriority}' active`);
       return;
     }
 
@@ -509,29 +571,38 @@ class AuctioneerVoiceService {
 
     // Drop duplicate ticks for the same second
     if (this.lastAnnouncedCountdownNumber === seconds) {
+      console.log(`[Countdown] Skipped number ${seconds}: duplicate tick`);
       return;
     }
 
-    // Drop stale ticks
+    // Drop stale higher ticks
     if (this.lastAnnouncedCountdownNumber !== null && seconds > this.lastAnnouncedCountdownNumber) {
+      console.log(`[Countdown] Skipped number ${seconds}: stale tick (last was ${this.lastAnnouncedCountdownNumber})`);
       return;
     }
 
-    // Skip outdated countdown numbers instead of delaying the auction
-    if (this.currentPriority === 'COUNTDOWN' && (this.isSpeakingActive || (typeof window !== 'undefined' && window.speechSynthesis?.speaking))) {
+    // Check if voice is genuinely still active from a previous countdown number
+    const now = Date.now();
+    const timeSinceLastCountdown = now - this.lastCountdownSpokenAt;
+    // Single digit at 3.0x takes ~120ms. If at least 320ms have passed, the user has heard the previous digit.
+    if (this.currentPriority === 'COUNTDOWN' && this.isSpeakingActive && timeSinceLastCountdown < 320) {
+      console.warn(`[Countdown] Skipped number ${seconds}: browser speech synthesis still rendering previous digit (${timeSinceLastCountdown}ms elapsed)`);
       return;
     }
 
     this.lastAnnouncedCountdownNumber = seconds;
+    this.lastCountdownSpokenAt = now;
 
     const spokenText = this.getCountdownSpokenText(seconds);
     if (spokenText) {
+      console.log(`[Countdown] Queued number ${seconds} for speech at 3.0x`);
       this.speak(spokenText, true, 'COUNTDOWN');
     }
   }
 
-  // 2. Player name: Announce the correct player name clearly at 3.0x speed
-  public announceNomination(playerName: string, lotId?: string) {
+  // 2. Player name: Announce player name and mapped role clearly at 3.0x speed
+  // Format: "Next player: [Player Name], [Player Role]."
+  public announceNomination(playerName: string, playerRole?: string, lotId?: string) {
     if (!this.enabled) return;
 
     if (!playerName || !playerName.trim()) return;
@@ -552,17 +623,33 @@ class AuctioneerVoiceService {
     this.lastAnnouncedCountdownLotId = lotId || null;
 
     const cleanPlayer = playerName.trim();
-    this.speak(`${cleanPlayer}.`, false, 'NOMINATION');
+    const mappedRole = mapPlayerRole(playerRole);
+
+    if (playerRole && !mappedRole) {
+      console.warn(`[AuctionVoice] Unmapped or unrecognized player role: "${playerRole}" for player "${cleanPlayer}"`);
+    } else if (!playerRole) {
+      console.warn(`[AuctionVoice] Missing player role for player "${cleanPlayer}"`);
+    }
+
+    const spokenText = mappedRole
+      ? `Next player: ${cleanPlayer}, ${mappedRole}.`
+      : `Next player: ${cleanPlayer}.`;
+
+    console.log(`[AuctionVoice] Nomination announced: "${spokenText}" (lot: ${lotId || 'unknown'})`);
+    this.speak(spokenText, false, 'NOMINATION');
   }
 
-  // 3. Player sold: “{Player Name} sold to {Franchise Name}.” at 3.0x speed
+  // 3. Player sold: “[Player Name] sold to [Franchise Name].” at 3.0x speed
   public announceSold(playerName: string, teamName: string) {
     if (!this.enabled) return;
     this.stopCountdown();
 
     const cleanPlayer = playerName && playerName.trim() ? playerName.trim() : 'Player';
     const cleanTeam = this.normalizeTeamShort(teamName);
-    this.speak(`${cleanPlayer} sold to ${cleanTeam}.`, true, 'RESULT');
+    const spokenText = `${cleanPlayer} sold to ${cleanTeam}.`;
+
+    console.log(`[AuctionVoice] Sale announced: "${spokenText}"`);
+    this.speak(spokenText, true, 'RESULT');
   }
 
   // Disabled per requirements: Speak only Timer, Player name, and Player sold
@@ -573,7 +660,7 @@ class AuctioneerVoiceService {
   public announcePlayerRecalled(_playerName?: string) {}
 
   public testCurrentVoice() {
-    this.speak('Virat Kohli sold to Royal Challengers Bengaluru.', false, 'RESULT');
+    this.speak('Next player: Virat Kohli, Batter.', false, 'NOMINATION');
   }
 }
 

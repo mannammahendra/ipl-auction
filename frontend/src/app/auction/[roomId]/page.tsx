@@ -47,25 +47,23 @@ export default function LiveAuctionArenaPage() {
   const router = useRouter();
   const roomId = params?.roomId as string;
 
-  const {
-    user,
-    room,
-    currentAuctionPlayer,
-    currentBids,
-    unreadChatCount,
-    setChatOpen,
-    setUser,
-    setRoom,
-    setTimer,
-    syncRoomState,
-    onBidPlaced,
-    onPlayerNominated,
-    onPlayerSold,
-    onPlayerUnsold,
-    acceleratedNotice,
-    roundCompletedNotice,
-    isAccelerated,
-  } = useAuctionStore();
+  const user = useAuctionStore((s) => s.user);
+  const room = useAuctionStore((s) => s.room);
+  const currentAuctionPlayer = useAuctionStore((s) => s.currentAuctionPlayer);
+  const currentBids = useAuctionStore((s) => s.currentBids);
+  const unreadChatCount = useAuctionStore((s) => s.unreadChatCount);
+  const setChatOpen = useAuctionStore((s) => s.setChatOpen);
+  const setUser = useAuctionStore((s) => s.setUser);
+  const setRoom = useAuctionStore((s) => s.setRoom);
+  const setTimer = useAuctionStore((s) => s.setTimer);
+  const syncRoomState = useAuctionStore((s) => s.syncRoomState);
+  const onBidPlaced = useAuctionStore((s) => s.onBidPlaced);
+  const onPlayerNominated = useAuctionStore((s) => s.onPlayerNominated);
+  const onPlayerSold = useAuctionStore((s) => s.onPlayerSold);
+  const onPlayerUnsold = useAuctionStore((s) => s.onPlayerUnsold);
+  const acceleratedNotice = useAuctionStore((s) => s.acceleratedNotice);
+  const roundCompletedNotice = useAuctionStore((s) => s.roundCompletedNotice);
+  const isAccelerated = useAuctionStore((s) => s.isAccelerated);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -150,7 +148,7 @@ export default function LiveAuctionArenaPage() {
           if (canonicalId && canonicalId !== lastAnnouncedPlayerIdRef.current) {
             lastAnnouncedPlayerIdRef.current = canonicalId;
             setTimeout(() => {
-              auctioneerVoice.announceNomination(cap.player.name, canonicalId);
+              auctioneerVoice.announceNomination(cap.player.name, cap.player.role, canonicalId);
             }, 300);
           }
         }
@@ -159,6 +157,30 @@ export default function LiveAuctionArenaPage() {
 
         const socket = socketService.connect(storedToken || '');
         socketService.joinRoom(roomData.id);
+
+        // Pre-clean existing listeners on this socket to prevent duplicates on reconnect or re-mount
+        socket.off('room_sync');
+        socket.off('timer_tick');
+        socket.off('bid_placed');
+        socket.off('player_nominated');
+        socket.off('player_sold');
+        socket.off('player_unsold');
+        socket.off('auction_paused');
+        socket.off('auction_resumed');
+        socket.off('player_skipped');
+        socket.off('action_undone');
+        socket.off('auction_speed_changed');
+        socket.off('auction_ended');
+        socket.off('auction_completed');
+        socket.off('team_selected');
+        socket.off('round_completed');
+        socket.off('accelerated_round_started');
+        socket.off('player_recalled');
+        socket.off('new_message');
+        socket.off('voice_joined');
+        socket.off('voice_user_joined');
+        socket.off('voice_user_left');
+        socket.off('voice_signal');
 
         socket.on('room_sync', (data: any) => {
           syncRoomState(data);
@@ -175,7 +197,7 @@ export default function LiveAuctionArenaPage() {
         // 1. Timer countdown: Loud countdown for last 5 to 0 seconds (5, 4, 3, 2, 1, 0)
         socket.on('timer_tick', (data: { remainingSeconds: number; speedMultiplier?: number }) => {
           setTimer(data.remainingSeconds);
-          if (data.speedMultiplier) {
+          if (data.speedMultiplier && useAuctionStore.getState().speedMultiplier !== data.speedMultiplier) {
             useAuctionStore.getState().setSpeedMultiplier(data.speedMultiplier);
           }
           auctioneerVoice.onTimerTick(data.remainingSeconds);
@@ -186,7 +208,7 @@ export default function LiveAuctionArenaPage() {
           const isPlayerNominated = currentAP?.status === 'NOMINATED';
 
           if (isAuctionActive && isPlayerNominated && data.remainingSeconds <= 5 && data.remainingSeconds >= 0) {
-            auctioneerVoice.announceCountdown(data.remainingSeconds, currentAP?.id);
+            auctioneerVoice.announceCountdown(data.remainingSeconds, currentAP?.id, data.speedMultiplier || 1.0);
           } else if (data.remainingSeconds > 5) {
             auctioneerVoice.resetCountdown();
           }
@@ -211,7 +233,7 @@ export default function LiveAuctionArenaPage() {
           onBidPlaced(data);
         });
 
-        // 3. Player nominated: Full player name (e.g. "Virat Kohli.")
+        // 3. Player nominated: Full player name and mapped role (e.g. "Next player: Virat Kohli, Batter.")
         socket.on('player_nominated', (data: any) => {
           clearZeroFallback();
           onPlayerNominated(data);
@@ -220,9 +242,10 @@ export default function LiveAuctionArenaPage() {
           const p = ap?.player;
           const canonicalId = ap?.id || p?.id;
           const playerName = p?.name || ap?.name;
+          const playerRole = p?.role || ap?.role;
           if (playerName) {
             lastAnnouncedPlayerIdRef.current = canonicalId;
-            auctioneerVoice.announceNomination(playerName, canonicalId);
+            auctioneerVoice.announceNomination(playerName, playerRole, canonicalId);
           }
         });
 

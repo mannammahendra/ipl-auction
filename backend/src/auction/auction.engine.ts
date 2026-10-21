@@ -745,6 +745,13 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
       generation: currentGen,
     };
 
+    // Broadcast the initial countdown tick immediately so clients receive the starting second
+    this.broadcast('timer_tick', roomId, {
+      remainingSeconds: durationSeconds,
+      speedMultiplier: speed,
+      serverTime: now,
+    });
+
     timerObj.intervalRef = setInterval(async () => {
       // 1. Generation check: if a new timer started, self-terminate immediately
       if (this.timerGenerations.get(roomId) !== currentGen) {
@@ -757,16 +764,23 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
       // 2. Authoritative deadline-based countdown (immune to event-loop lag and drift)
       const currentNow = Date.now();
       const remainingMs = timerObj.timerEndsAt - currentNow;
-      const remaining = Math.min(timerObj.totalSeconds, Math.max(0, Math.ceil((remainingMs * speed) / 1000)));
-      timerObj.remainingSeconds = remaining;
+      const targetRemaining = Math.min(timerObj.totalSeconds, Math.max(0, Math.ceil((remainingMs * speed) / 1000)));
 
-      this.broadcast('timer_tick', roomId, {
-        remainingSeconds: remaining,
-        speedMultiplier: speed,
-        serverTime: currentNow,
-      });
+      const previousRemaining = timerObj.remainingSeconds;
+      if (previousRemaining > targetRemaining) {
+        // Sequentially emit every intermediate countdown second skipped due to interval jitter or sampling
+        for (let sec = previousRemaining - 1; sec >= targetRemaining; sec--) {
+          timerObj.remainingSeconds = sec;
+          this.broadcast('timer_tick', roomId, {
+            remainingSeconds: sec,
+            speedMultiplier: speed,
+            serverTime: currentNow,
+          });
+          if (sec <= 0) break;
+        }
+      }
 
-      if (remaining <= 0) {
+      if (timerObj.remainingSeconds <= 0) {
         if (timerObj.isTransitioning) {
           clearInterval(timerObj.intervalRef);
           timerObj.intervalRef = null;
