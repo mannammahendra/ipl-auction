@@ -8,10 +8,9 @@ import { PlaceBidDto } from '../src/auction/dto/auction-action.dto.js';
 
 describe('DTO Input Validation (class-validator)', () => {
   describe('CreateRoomDto', () => {
-    it('validates a correct payload successfully with required password', async () => {
+    it('validates a correct payload successfully', async () => {
       const dto = plainToInstance(CreateRoomDto, {
         name: 'Wankhede Arena',
-        password: 'securePassword123',
         startingPurse: 1200000000,
         minSquad: 18,
         maxSquad: 25,
@@ -22,39 +21,9 @@ describe('DTO Input Validation (class-validator)', () => {
       expect(errors.length).toBe(0);
     });
 
-    it('fails when password is missing', async () => {
-      const dto = plainToInstance(CreateRoomDto, {
-        name: 'Missing Password Arena',
-      });
-      const errors = await validate(dto);
-      const passError = errors.find((e) => e.property === 'password');
-      expect(passError).toBeDefined();
-    });
-
-    it('fails when password is empty string', async () => {
-      const dto = plainToInstance(CreateRoomDto, {
-        name: 'Empty Password Arena',
-        password: '',
-      });
-      const errors = await validate(dto);
-      const passError = errors.find((e) => e.property === 'password');
-      expect(passError).toBeDefined();
-    });
-
-    it('fails when password is whitespace-only', async () => {
-      const dto = plainToInstance(CreateRoomDto, {
-        name: 'Whitespace Password Arena',
-        password: '    ',
-      });
-      const errors = await validate(dto);
-      const passError = errors.find((e) => e.property === 'password');
-      expect(passError).toBeDefined();
-    });
-
     it('fails when name is not a string (e.g. numeric)', async () => {
       const dto = plainToInstance(CreateRoomDto, {
         name: 12345,
-        password: 'validPassword123',
       });
       const errors = await validate(dto);
       expect(errors.some((e) => e.property === 'name')).toBe(true);
@@ -63,7 +32,6 @@ describe('DTO Input Validation (class-validator)', () => {
     it('fails when squad sizes or purse are negative', async () => {
       const dto = plainToInstance(CreateRoomDto, {
         name: 'Negative Squad Test',
-        password: 'validPassword123',
         minSquad: -5,
         startingPurse: -1000,
       });
@@ -77,7 +45,6 @@ describe('DTO Input Validation (class-validator)', () => {
     it('fails when minSquad is zero', async () => {
       const dto = plainToInstance(CreateRoomDto, {
         name: 'Zero Squad Test',
-        password: 'validPassword123',
         minSquad: 0,
       });
       const errors = await validate(dto);

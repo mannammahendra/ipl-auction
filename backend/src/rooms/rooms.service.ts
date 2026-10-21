@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Inject, forwardRef, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { DEFAULT_TEAMS } from '../constants/teams.constant.js';
 import { AuctionEngine } from '../auction/auction.engine.js';
@@ -38,7 +37,7 @@ export class RoomsService {
     hostUserId: string,
     options: {
       name?: string;
-      password: string;
+      password?: string;
       startingPurse?: number;
       squadSize?: number;
       minSquad?: number;
@@ -48,12 +47,6 @@ export class RoomsService {
       snipeExtensionSeconds?: number;
     },
   ) {
-    if (!options.password || typeof options.password !== 'string' || !options.password.trim()) {
-      throw new BadRequestException('Please enter a password to create the auction room.');
-    }
-    const rawPassword = options.password.trim();
-    const hashedPassword = await bcrypt.hash(rawPassword, 10);
-
     let code = this.generateRoomCode();
     let exists = await this.prisma.room.findUnique({ where: { code } });
     while (exists) {
@@ -103,7 +96,7 @@ export class RoomsService {
       data: {
         code,
         name: options.name || `IPL Mega Auction ${code}`,
-        password: hashedPassword,
+        password: options.password || null,
         hostId: hostUserId,
         startingPurse,
         minSquad,
@@ -243,18 +236,8 @@ export class RoomsService {
       throw new NotFoundException('Auction room not found. Please check your room code.');
     }
 
-    if (room.password) {
-      if (!password || !password.trim()) {
-        throw new ForbiddenException('Incorrect room password');
-      }
-      const isBcrypt = room.password.startsWith('$2a$') || room.password.startsWith('$2b$');
-      const isMatch = isBcrypt
-        ? await bcrypt.compare(password.trim(), room.password)
-        : room.password === password.trim();
-
-      if (!isMatch) {
-        throw new ForbiddenException('Incorrect room password');
-      }
+    if (room.password && room.password !== password) {
+      throw new ForbiddenException('Incorrect room password');
     }
 
     let member = await this.prisma.roomMember.findUnique({
@@ -369,12 +352,8 @@ export class RoomsService {
       ? room.auctionPlayers.find((ap) => ap.id === room.currentAuctionPlayerId) || null
       : room.auctionPlayers.find((ap) => ap.status === 'NOMINATED') || null;
 
-    // Never expose the raw or hashed password in API responses
-    const { password: _roomPassword, ...safeRoom } = room;
-
     return {
-      ...safeRoom,
-      hasPassword: Boolean(_roomPassword),
+      ...room,
       currentAuctionPlayer,
     };
   }

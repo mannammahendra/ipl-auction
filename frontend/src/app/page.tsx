@@ -99,11 +99,6 @@ function LandingContent() {
     e.preventDefault();
     const finalName = displayName.trim() || `Host_${Math.floor(100 + Math.random() * 900)}`;
 
-    if (!roomPassword || !roomPassword.trim()) {
-      setErrorMessage('Please enter a password to create the auction room.');
-      return;
-    }
-
     const purseCr = Number(startingPurseCr) || 120;
     if (purseCr < 1) {
       setErrorMessage('Starting purse must be at least ₹1 Crore');
@@ -140,7 +135,7 @@ function LandingContent() {
       // 2. Create room with compulsory squad size and max overseas
       const room = await api.rooms.create({
         name: roomName.trim() || undefined,
-        password: roomPassword.trim(),
+        password: roomPassword.trim() || undefined,
         startingPurse: purseCr * 10000000,
         bidTimerSeconds: timer,
         squadSize: squad,
@@ -171,7 +166,6 @@ function LandingContent() {
 
       const room = await api.rooms.create({
         name: 'IPL Mega Demo Auction',
-        password: 'demo_auction_pass',
         startingPurse: 1200000000,
         bidTimerSeconds: 20,
         squadSize: 11,
@@ -302,12 +296,12 @@ function LandingContent() {
 
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                    Room Password
+                    Room Password (Optional)
                   </label>
                   <div className="relative">
                     <input
                       type={showJoinPassword ? 'text' : 'password'}
-                      placeholder="Enter room password"
+                      placeholder="Leave empty if not protected"
                       value={roomPassword}
                       onChange={(e) => setRoomPassword(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 pr-10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
@@ -376,21 +370,16 @@ function LandingContent() {
 
 
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-300 block mb-0.5 flex items-center justify-between">
-                    <span>Room Password (Mandatory) <span className="text-amber-400 font-black">*</span></span>
-                    <span className="text-[9px] text-amber-300 font-bold uppercase tracking-wider bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/40">Mandatory</span>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
+                    Room Password (Optional)
                   </label>
                   <div className="relative">
                     <input
                       type={showCreatePassword ? 'text' : 'password'}
-                      required
-                      placeholder="Enter room password (mandatory)"
+                      placeholder="Private room password"
                       value={roomPassword}
-                      onChange={(e) => {
-                        setRoomPassword(e.target.value);
-                        if (errorMessage) setErrorMessage(null);
-                      }}
-                      className="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 rounded-lg px-3 py-1.5 pr-9 text-xs text-white placeholder-slate-500 focus:outline-none"
+                      onChange={(e) => setRoomPassword(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 pr-9 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
                     />
                     <button
                       type="button"
