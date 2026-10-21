@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 
 const BASE_URL = process.env.API_BASE_URL || 'http://127.0.0.1:4000';
 

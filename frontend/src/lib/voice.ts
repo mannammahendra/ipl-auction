@@ -6,12 +6,13 @@ import { useAuctionStore } from './store';
 
 export type VoicePack = 'ELLIE_GOULDING';
 
-export type SpeechPriority = 'COUNTDOWN' | 'NOMINATION' | 'RESULT';
+export type SpeechPriority = 'COUNTDOWN' | 'BID' | 'NOMINATION' | 'RESULT';
 
 export const PRIORITY_ORDER: Record<SpeechPriority, number> = {
   COUNTDOWN: 1,
-  NOMINATION: 2,
-  RESULT: 3,
+  BID: 2,
+  NOMINATION: 3,
+  RESULT: 4,
 };
 
 export interface ScoredVoice {
@@ -20,6 +21,25 @@ export interface ScoredVoice {
   isNatural: boolean;
   isBritish: boolean;
   label: string;
+}
+
+export function toTeamShortCode(rawName?: string): string {
+  if (!rawName) return 'Franchise';
+  const clean = rawName.toUpperCase().trim();
+  if (['CSK', 'MI', 'RCB', 'KKR', 'SRH', 'RR', 'GT', 'LSG', 'DC', 'PBKS'].includes(clean)) {
+    return clean;
+  }
+  if (clean.includes('CHENNAI') || clean.includes('SUPER KINGS')) return 'CSK';
+  if (clean.includes('MUMBAI') || clean.includes('INDIANS')) return 'MI';
+  if (clean.includes('BENGALURU') || clean.includes('BANGALORE') || clean.includes('CHALLENGERS')) return 'RCB';
+  if (clean.includes('KOLKATA') || clean.includes('KNIGHT')) return 'KKR';
+  if (clean.includes('HYDERABAD') || clean.includes('SUNRISERS')) return 'SRH';
+  if (clean.includes('RAJASTHAN') || clean.includes('ROYALS')) return 'RR';
+  if (clean.includes('GUJARAT') || clean.includes('TITANS')) return 'GT';
+  if (clean.includes('LUCKNOW') || clean.includes('GIANTS')) return 'LSG';
+  if (clean.includes('DELHI') || clean.includes('CAPITALS')) return 'DC';
+  if (clean.includes('PUNJAB') || clean.includes('KINGS')) return 'PBKS';
+  return rawName.trim();
 }
 
 export function mapPlayerRole(rawRole?: string): string | null {
@@ -92,6 +112,8 @@ class AuctioneerVoiceService {
   private lastAnnouncedCountdownNumber: number | null = null;
   private lastAnnouncedCountdownLotId: string | null = null;
   private lastCountdownSpokenAt: number = 0;
+  private lastAnnouncedBidKey: string | null = null;
+  private lastAnnouncedSaleKey: string | null = null;
   private currentPriority: SpeechPriority | null = null;
   private prioritySafetyTimeout: any = null;
   private isSpeakingActive: boolean = false;
@@ -216,7 +238,7 @@ class AuctioneerVoiceService {
   }
 
   public getCountdownSpokenText(seconds: number): string | null {
-    if (seconds >= 0 && seconds <= 5) {
+    if (seconds >= 1 && seconds <= 3) {
       return String(seconds);
     }
     return null;
@@ -385,14 +407,14 @@ class AuctioneerVoiceService {
     if (amount >= 10000000) {
       const cr = amount / 10000000;
       if (cr % 1 === 0) {
-        return `${cr} Crore`;
+        return `${cr} crore`;
       }
       const cleanCr = parseFloat(cr.toFixed(2));
-      return `${cleanCr} Crore`;
+      return `${cleanCr} crore`;
     }
     if (amount >= 100000) {
       const lakhs = Math.round(amount / 100000);
-      return `${lakhs} Lakh`;
+      return `${lakhs} lakh`;
     }
     return `${amount} rupees`;
   }
@@ -424,9 +446,9 @@ class AuctioneerVoiceService {
     return 1.0;
   }
 
-  // Called on each timer tick to reset countdown state if above 5s
+  // Called on each timer tick to reset countdown state if above 3s
   public onTimerTick(remainingSeconds: number) {
-    if (remainingSeconds > 5) {
+    if (remainingSeconds > 3) {
       this.resetCountdown();
     }
     this.currentRemainingSeconds = remainingSeconds;
@@ -458,7 +480,7 @@ class AuctioneerVoiceService {
         }
       } catch (e) {}
     } else if (priority === 'RESULT') {
-      // Sale result invalidates countdowns
+      // Sale result invalidates countdowns and pending bids
       this.currentPriority = 'RESULT';
       try {
         window.speechSynthesis.cancel();
@@ -466,9 +488,22 @@ class AuctioneerVoiceService {
           window.speechSynthesis.resume();
         }
       } catch (e) {}
+    } else if (priority === 'BID') {
+      // Confirmed sale result takes precedence
+      if (this.currentPriority === 'RESULT') {
+        return;
+      }
+      this.currentPriority = 'BID';
+      // Prioritize newest accepted bid promptly without backlog
+      try {
+        window.speechSynthesis.cancel();
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+      } catch (e) {}
     } else if (priority === 'COUNTDOWN') {
-      // Countdown must never interrupt nomination or sale result
-      if (this.currentPriority === 'NOMINATION' || this.currentPriority === 'RESULT') {
+      // Countdown must never interrupt nomination, bid, or sale result
+      if (this.currentPriority === 'NOMINATION' || this.currentPriority === 'BID' || this.currentPriority === 'RESULT') {
         return;
       }
       this.currentPriority = 'COUNTDOWN';
@@ -531,7 +566,7 @@ class AuctioneerVoiceService {
     };
 
     // Fast 3.0x speech safety timeouts (prevents locks without waiting)
-    const safetyMs = priority === 'COUNTDOWN' ? 450 : 2000;
+    const safetyMs = priority === 'COUNTDOWN' ? 450 : priority === 'BID' ? 800 : 2000;
     this.prioritySafetyTimeout = setTimeout(() => {
       this.isSpeakingActive = false;
       if (this.currentPriority === priority) {
@@ -547,7 +582,7 @@ class AuctioneerVoiceService {
     } catch (e) {}
   }
 
-  // 1. Timer: Announce countdown numbers (5 to 0) at 3.0x speed
+  // 1. Timer: Announce countdown numbers (only 3, 2, 1) at 3.0x speed
   public announceCountdown(seconds: number, lotId?: string, speedMultiplier: number = 1.0) {
     console.log(`[Countdown] Event received: remainingSeconds=${seconds}, blitz=${speedMultiplier}x, lotId=${lotId || 'none'}`);
 
@@ -555,10 +590,11 @@ class AuctioneerVoiceService {
       console.log(`[Countdown] Skipped number ${seconds}: voice disabled`);
       return;
     }
-    if (seconds < 0 || seconds > 5) return;
+    // Strictly announce countdown only for 3, 2, 1 (do not announce 5, 4, 0)
+    if (seconds < 1 || seconds > 3) return;
 
-    // Critical announcements take precedence: never interrupt nomination or sale results
-    if (this.currentPriority === 'NOMINATION' || this.currentPriority === 'RESULT') {
+    // Critical announcements take precedence: never interrupt nomination, live bids, or sale results
+    if (this.currentPriority === 'NOMINATION' || this.currentPriority === 'BID' || this.currentPriority === 'RESULT') {
       console.log(`[Countdown] Skipped number ${seconds}: higher priority '${this.currentPriority}' active`);
       return;
     }
@@ -621,6 +657,8 @@ class AuctioneerVoiceService {
 
     this.stopCountdown();
     this.lastAnnouncedCountdownLotId = lotId || null;
+    this.lastAnnouncedBidKey = null;
+    this.lastAnnouncedSaleKey = null;
 
     const cleanPlayer = playerName.trim();
     const mappedRole = mapPlayerRole(playerRole);
@@ -639,21 +677,54 @@ class AuctioneerVoiceService {
     this.speak(spokenText, false, 'NOMINATION');
   }
 
-  // 3. Player sold: “[Player Name] sold to [Franchise Name].” at 3.0x speed
-  public announceSold(playerName: string, teamName: string) {
+  // 3. Live bids: Announce every valid live bid as "[Franchise], [Amount]." at 3.0x speed
+  // e.g. "CSK, 2 crore.", "KKR, 2.5 crore.", "GT, 4 crore."
+  public announceBid(teamRaw?: string, amount?: number, bidKeyOrId?: string) {
     if (!this.enabled) return;
+    if (!amount || amount <= 0) return;
+
+    const team = toTeamShortCode(teamRaw);
+    const amountStr = this.formatRupeesSpoken(amount);
+    const bidKey = bidKeyOrId || `${team}_${amount}`;
+
+    // Drop duplicate announcement for the exact same bid
+    if (this.lastAnnouncedBidKey === bidKey) {
+      return;
+    }
+    this.lastAnnouncedBidKey = bidKey;
+
+    // Bids take priority over countdown; cancel countdown immediately
     this.stopCountdown();
 
+    const spokenText = `${team}, ${amountStr}.`;
+    console.log(`[AuctionVoice] Bid announced: "${spokenText}"`);
+
+    // Priority 'BID' cancels prior speech backlog to prioritize newest accepted bid
+    this.speak(spokenText, false, 'BID');
+  }
+
+  // 4. Player sold: “[Player Name] sold to [Franchise Name].” at 3.0x speed
+  // e.g. "MS Dhoni sold to CSK." (no final sale amount, no sound effects, no repeat)
+  public announceSold(playerName: string, teamName: string, saleKey?: string) {
+    if (!this.enabled) return;
+
+    const key = saleKey || `${playerName}_${teamName}`;
+    if (this.lastAnnouncedSaleKey === key) {
+      return; // Do not repeat sale announcement
+    }
+    this.lastAnnouncedSaleKey = key;
+
+    this.stopCountdown();
+    this.lastAnnouncedBidKey = null;
+
     const cleanPlayer = playerName && playerName.trim() ? playerName.trim() : 'Player';
-    const cleanTeam = this.normalizeTeamShort(teamName);
+    const cleanTeam = toTeamShortCode(teamName);
     const spokenText = `${cleanPlayer} sold to ${cleanTeam}.`;
 
     console.log(`[AuctionVoice] Sale announced: "${spokenText}"`);
     this.speak(spokenText, true, 'RESULT');
   }
 
-  // Disabled per requirements: Speak only Timer, Player name, and Player sold
-  public announceBid(_teamShortName?: string, _amount?: number, _lotId?: string) {}
   public announceUnsold(_playerName?: string) {}
   public announceAcceleratedRound(_round?: number, _timerSeconds?: number) {}
   public announceRoundCompleted(_round?: number, _unsoldAvailable?: number, _intermissionSeconds?: number) {}

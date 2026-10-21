@@ -194,7 +194,7 @@ export default function LiveAuctionArenaPage() {
           }
         };
 
-        // 1. Timer countdown: Loud countdown for last 5 to 0 seconds (5, 4, 3, 2, 1, 0)
+        // 1. Timer countdown: Loud countdown for only 3, 2, 1 seconds (no 5, 4, 0)
         socket.on('timer_tick', (data: { remainingSeconds: number; speedMultiplier?: number }) => {
           setTimer(data.remainingSeconds);
           if (data.speedMultiplier && useAuctionStore.getState().speedMultiplier !== data.speedMultiplier) {
@@ -207,9 +207,9 @@ export default function LiveAuctionArenaPage() {
           const isAuctionActive = (currentRoom?.status === 'AUCTION_ACTIVE' || !currentRoom?.status) && !currentRoom?.isPaused;
           const isPlayerNominated = currentAP?.status === 'NOMINATED';
 
-          if (isAuctionActive && isPlayerNominated && data.remainingSeconds <= 5 && data.remainingSeconds >= 0) {
+          if (isAuctionActive && isPlayerNominated && data.remainingSeconds <= 3 && data.remainingSeconds >= 1) {
             auctioneerVoice.announceCountdown(data.remainingSeconds, currentAP?.id, data.speedMultiplier || 1.0);
-          } else if (data.remainingSeconds > 5) {
+          } else if (data.remainingSeconds > 3) {
             auctioneerVoice.resetCountdown();
           }
 
@@ -227,10 +227,23 @@ export default function LiveAuctionArenaPage() {
           }
         });
 
-        // 2. Bid placed: Update store (bids not spoken per 3-type voice specification)
+        // 2. Bid placed: Announce every valid live bid as "[Franchise], [Amount]." e.g. "CSK, 2 crore."
         socket.on('bid_placed', (data: any) => {
           clearZeroFallback();
           onBidPlaced(data);
+
+          const teamRaw =
+            data.team?.shortName ||
+            data.team?.name ||
+            data.bid?.team?.shortName ||
+            data.bid?.team?.name ||
+            data.bidderName;
+          const amount = data.amount || data.bid?.amount;
+          const bidId = data.bid?.id || `${teamRaw}_${amount}_${data.serverTime || Date.now()}`;
+
+          if (teamRaw && amount) {
+            auctioneerVoice.announceBid(teamRaw, amount, bidId);
+          }
         });
 
         // 3. Player nominated: Full player name and mapped role (e.g. "Next player: Virat Kohli, Batter.")
@@ -284,7 +297,8 @@ export default function LiveAuctionArenaPage() {
 
           lastAnnouncedPlayerIdRef.current = null;
 
-          auctioneerVoice.announceSold(playerName, teamName);
+          const saleKey = data.auctionPlayer?.id || `${playerName}_${teamName}`;
+          auctioneerVoice.announceSold(playerName, teamName, saleKey);
         });
 
         // 5. Unsold: Update store (unsold results not spoken per 3-type voice specification)

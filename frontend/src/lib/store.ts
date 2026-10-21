@@ -443,7 +443,7 @@ export const useAuctionStore = create<AuctionStore>((set) => ({
   },
 
   onPlayerSold: ({ auctionPlayer, winningTeam, soldPrice, squadMember }) => {
-    soundFx.playGavel();
+    // Sale sound effects removed per specification
 
     const memberToAdd: SquadMember = {
       ...(squadMember || {}),
