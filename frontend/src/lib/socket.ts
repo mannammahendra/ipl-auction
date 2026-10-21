@@ -182,6 +182,30 @@ class SocketService {
     }
   }
 
+  joinVoice(roomId: string) {
+    if (this.socket) {
+      this.socket.emit('voice_join', { roomId });
+    }
+  }
+
+  leaveVoice(roomId: string) {
+    if (this.socket) {
+      this.socket.emit('voice_leave', { roomId });
+    }
+  }
+
+  sendVoiceSignal(toSocketId: string, signal: any) {
+    if (this.socket) {
+      this.socket.emit('voice_signal', { toSocketId, signal });
+    }
+  }
+
+  setVoiceState(roomId: string, state: { isMuted?: boolean; isSpeaking?: boolean }) {
+    if (this.socket) {
+      this.socket.emit('voice_state', { roomId, ...state });
+    }
+  }
+
   disconnect() {
     if (this.socket) {
       this.socket.disconnect();

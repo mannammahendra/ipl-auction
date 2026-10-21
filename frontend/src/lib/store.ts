@@ -134,6 +134,16 @@ export interface ChatMessage {
 
 
 
+export interface VoiceParticipant {
+  userId: string;
+  socketId: string;
+  username: string;
+  teamShortName?: string | null;
+  teamColor?: string | null;
+  isMuted: boolean;
+  isSpeaking: boolean;
+}
+
 interface AuctionStore {
   user: User | null;
   token: string | null;
@@ -154,6 +164,13 @@ interface AuctionStore {
   messages: ChatMessage[];
   unreadChatCount: number;
   chatOpen: boolean;
+
+  // Real-time Voice / Microphone
+  voiceParticipants: VoiceParticipant[];
+  isVoiceConnected: boolean;
+  isMicMuted: boolean;
+  isSpeaking: boolean;
+
 
 
 
@@ -178,6 +195,16 @@ interface AuctionStore {
   setMessages: (msgs: ChatMessage[]) => void;
   markChatRead: () => void;
 
+  // Voice Actions
+  setVoiceConnected: (connected: boolean) => void;
+  setMicMuted: (muted: boolean) => void;
+  setIsSpeaking: (speaking: boolean) => void;
+  setVoiceParticipants: (participants: VoiceParticipant[]) => void;
+  addVoiceParticipant: (participant: VoiceParticipant) => void;
+  removeVoiceParticipant: (socketId: string) => void;
+  updateVoiceParticipantState: (socketId: string, state: { isMuted?: boolean; isSpeaking?: boolean }) => void;
+
+
 
 
   // Accelerated Actions
@@ -193,6 +220,7 @@ interface AuctionStore {
     currentBids?: BidRecord[];
     timerState?: { remainingSeconds: number; isPaused: boolean; speedMultiplier?: number } | null;
     recentMessages?: ChatMessage[];
+    voiceParticipants?: VoiceParticipant[];
   }) => void;
 
   onBidPlaced: (payload: { bid: BidRecord; team: Team; amount: number; timerSeconds: number }) => void;
@@ -234,6 +262,13 @@ export const useAuctionStore = create<AuctionStore>((set) => ({
   messages: [],
   unreadChatCount: 0,
   chatOpen: false,
+
+  // Real-time Voice / Microphone
+  voiceParticipants: [],
+  isVoiceConnected: false,
+  isMicMuted: true,
+  isSpeaking: false,
+
 
 
 
@@ -296,9 +331,32 @@ export const useAuctionStore = create<AuctionStore>((set) => ({
 
   markChatRead: () => set({ unreadChatCount: 0 }),
 
+  setVoiceConnected: (isVoiceConnected) => set({ isVoiceConnected }),
+  setMicMuted: (isMicMuted) => set({ isMicMuted }),
+  setIsSpeaking: (isSpeaking) => set({ isSpeaking }),
+  setVoiceParticipants: (voiceParticipants) => set({ voiceParticipants }),
+  addVoiceParticipant: (participant) =>
+    set((state) => ({
+      voiceParticipants: [
+        ...state.voiceParticipants.filter((p) => p.socketId !== participant.socketId),
+        participant,
+      ],
+    })),
+  removeVoiceParticipant: (socketId) =>
+    set((state) => ({
+      voiceParticipants: state.voiceParticipants.filter((p) => p.socketId !== socketId),
+    })),
+  updateVoiceParticipantState: (socketId, update) =>
+    set((state) => ({
+      voiceParticipants: state.voiceParticipants.map((p) =>
+        p.socketId === socketId ? { ...p, ...update } : p,
+      ),
+    })),
 
 
-  syncRoomState: ({ room, currentAuctionPlayer, currentBids, timerState, recentMessages }) => {
+
+
+  syncRoomState: ({ room, currentAuctionPlayer, currentBids, timerState, recentMessages, voiceParticipants }) => {
     const currentTeam = room.teams?.find((t) => t.id === room.currentBidTeamId) || null;
     const latestBidder = currentBids && currentBids.length > 0 ? currentBids[0].bidder?.username : null;
     set((state) => {
@@ -329,6 +387,7 @@ export const useAuctionStore = create<AuctionStore>((set) => ({
         isTimerPaused: timerState ? timerState.isPaused : room.isPaused,
         speedMultiplier: Math.min(1.5, Math.max(1.0, timerState?.speedMultiplier || state.speedMultiplier || 1.0)),
         messages: recentMessages !== undefined ? recentMessages : state.messages,
+        voiceParticipants: voiceParticipants !== undefined ? voiceParticipants : state.voiceParticipants,
         isAccelerated: (room.currentRound || 1) >= 2 || (room.bidTimerSeconds || 25) <= 15,
       };
     });

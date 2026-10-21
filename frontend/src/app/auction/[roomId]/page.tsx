@@ -14,6 +14,8 @@ import { HostControls } from '../../../components/HostControls';
 import { SoldCelebrationModal } from '../../../components/SoldCelebrationModal';
 import { SquadInspectionDrawer } from '../../../components/SquadInspectionDrawer';
 import { AuctionPoolRecordsModal } from '../../../components/AuctionPoolRecordsModal';
+import { MicrophoneControl } from '../../../components/MicrophoneControl';
+import { voiceChatManager } from '../../../lib/voiceChat';
 import { RoomChatDrawer } from '../../../components/RoomChatDrawer';
 import { FloatingAuctionBar } from '../../../components/FloatingAuctionBar';
 import { PurseRadarModal } from '../../../components/PurseRadarModal';
@@ -150,6 +152,11 @@ export default function LiveAuctionArenaPage() {
         socket.off('accelerated_round_started');
         socket.off('player_recalled');
         socket.off('new_message');
+        socket.off('voice_joined');
+        socket.off('voice_user_joined');
+        socket.off('voice_user_left');
+        socket.off('voice_signal');
+        socket.off('voice_state_changed');
 
         socket.on('room_sync', (data: any) => {
           syncRoomState(data);
@@ -291,6 +298,37 @@ export default function LiveAuctionArenaPage() {
           useAuctionStore.getState().addMessage(msg);
         });
 
+        // 7. WebRTC Live Voice Chat & Microphone events
+        socket.on('voice_joined', (data: any) => {
+          if (data.peers && Array.isArray(data.peers)) {
+            data.peers.forEach((peer: any) => {
+              useAuctionStore.getState().addVoiceParticipant(peer);
+            });
+          }
+          voiceChatManager.handleVoiceJoined(data.peers || []);
+        });
+
+        socket.on('voice_user_joined', (user: any) => {
+          useAuctionStore.getState().addVoiceParticipant(user);
+          voiceChatManager.handleUserJoined(user);
+        });
+
+        socket.on('voice_user_left', (data: { socketId: string; userId: string }) => {
+          useAuctionStore.getState().removeVoiceParticipant(data.socketId);
+          voiceChatManager.handleUserLeft(data.socketId);
+        });
+
+        socket.on('voice_signal', (data: { fromSocketId: string; signal: any }) => {
+          voiceChatManager.handleVoiceSignal(data.fromSocketId, data.signal);
+        });
+
+        socket.on('voice_state_changed', (data: any) => {
+          useAuctionStore.getState().updateVoiceParticipantState(data.socketId, {
+            isMuted: data.isMuted,
+            isSpeaking: data.isSpeaking,
+          });
+        });
+
 
 
         // 8. Bid Error and Server Error Handling
@@ -339,6 +377,7 @@ export default function LiveAuctionArenaPage() {
         socket.off('bid_error');
         socket.off('error');
       }
+      voiceChatManager.stopVoice();
 
     };
   }, [roomId]);
@@ -433,7 +472,7 @@ export default function LiveAuctionArenaPage() {
               </button>
             </div>
 
-            {/* Right Cluster: My Team + 1. Pool + 2. Messages + 3. History + 4. Squads */}
+            {/* Right Cluster: My Team + 1. Pool + 2. Live Mic + 3. Messages + 4. History + 5. Squads */}
             <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
               {/* Current User Team Pill */}
               {myTeam && (
@@ -469,9 +508,10 @@ export default function LiveAuctionArenaPage() {
                 </span>
               </button>
 
+              {/* 2. LIVE MICROPHONE (Voice Chat) */}
+              <MicrophoneControl roomId={roomId} />
 
-
-              {/* 2. ROOM MESSAGES / CHAT */}
+              {/* 3. ROOM MESSAGES / CHAT */}
               <button
                 onClick={() => setChatOpen(true)}
                 className="relative flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-800/90 hover:bg-slate-700 text-[11px] font-bold text-slate-200 border border-slate-700 transition-all active:scale-95 shrink-0 whitespace-nowrap shadow-sm"
