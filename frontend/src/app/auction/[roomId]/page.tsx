@@ -79,10 +79,12 @@ export default function LiveAuctionArenaPage() {
   const [hostAlert, setHostAlert] = useState<{ id: string; message: string; type?: string } | null>(null);
 
   const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [voiceSpeed, setVoiceSpeed] = useState<number>(3);
   const lastAnnouncedPlayerIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     setVoiceEnabled(auctioneerVoice.isEnabled());
+    setVoiceSpeed(auctioneerVoice.getRate());
     auctioneerVoice.unlockAudio();
   }, []);
 
@@ -218,10 +220,10 @@ setLoading(false); // Instant render - never leave user staring at a spinner
           const isAuctionActive = (currentRoom?.status === 'AUCTION_ACTIVE' || !currentRoom?.status) && !currentRoom?.isPaused;
           const isPlayerNominated = currentAP?.status === 'NOMINATED';
 
-          // Countdown 5 to 0 numbers announced strictly at configured 2.0x voice speed
-          if (isAuctionActive && isPlayerNominated && data.remainingSeconds <= 5 && data.remainingSeconds >= 0) {
+          // Countdown 3 to 1 numbers announced strictly at configured voice speed
+          if (isAuctionActive && isPlayerNominated && data.remainingSeconds <= 3 && data.remainingSeconds >= 1) {
             auctioneerVoice.announceCountdown(data.remainingSeconds, currentAP?.id, data.speedMultiplier || 1.0);
-          } else if (data.remainingSeconds > 5) {
+          } else if (data.remainingSeconds > 3) {
             auctioneerVoice.resetCountdown();
           }
 
@@ -628,31 +630,58 @@ setLoading(false); // Instant render - never leave user staring at a spinner
                 </span>
               </button>
 
-                            {/* 2. VOICE COMMENTARY MUTE / UNMUTE (2.0x Default) */}
-              <button
-                onClick={() => {
-                  const next = auctioneerVoice.toggle();
-                  setVoiceEnabled(next);
-                }}
-                className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-bold border transition-all active:scale-95 shrink-0 whitespace-nowrap shadow-sm ${
-                  voiceEnabled
-                    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/25'
-                    : 'bg-rose-500/15 text-rose-300 border-rose-500/40 hover:bg-rose-500/25'
-                }`}
-                title={voiceEnabled ? 'Mute Voice Commentary (2.0x)' : 'Unmute Voice Commentary'}
-              >
-                {voiceEnabled ? (
-                  <>
-                    <Volume2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span>Voice 2x</span>
-                  </>
-                ) : (
-                  <>
-                    <VolumeX className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-                    <span>Muted</span>
-                  </>
-                )}
-              </button>
+                            {/* 2. VOICE COMMENTARY: MUTE/UNMUTE & SPEED SELECTOR (2x, 3x, 4x) */}
+              <div className="flex items-center rounded-md border border-slate-700 bg-slate-800/90 shadow-sm shrink-0 overflow-hidden">
+                <button
+                  onClick={() => {
+                    const next = auctioneerVoice.toggle();
+                    setVoiceEnabled(next);
+                  }}
+                  className={`flex items-center gap-1.5 px-2 py-0.5 text-[11px] font-bold transition-all active:scale-95 ${
+                    voiceEnabled
+                      ? 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30'
+                      : 'bg-rose-500/20 text-rose-300 hover:bg-rose-500/30'
+                  }`}
+                  title={voiceEnabled ? 'Mute Voice Commentary' : 'Unmute Voice Commentary'}
+                >
+                  {voiceEnabled ? (
+                    <>
+                      <Volume2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span>Voice</span>
+                    </>
+                  ) : (
+                    <>
+                      <VolumeX className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                      <span>Muted</span>
+                    </>
+                  )}
+                </button>
+
+                {/* SPEED SELECTOR: 2x | 3x | 4x */}
+                <div className="flex items-center border-l border-slate-700 px-0.5 bg-slate-900/60">
+                  {[2, 3, 4].map((spd) => (
+                    <button
+                      key={spd}
+                      onClick={() => {
+                        auctioneerVoice.setRate(spd);
+                        setVoiceSpeed(spd);
+                        if (!voiceEnabled) {
+                          auctioneerVoice.setEnabled(true);
+                          setVoiceEnabled(true);
+                        }
+                      }}
+                      className={`px-1.5 py-0.5 text-[10px] font-bold rounded transition-all active:scale-95 ${
+                        voiceSpeed === spd && voiceEnabled
+                          ? 'bg-amber-400 text-slate-950 font-black shadow-sm'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                      }`}
+                      title={`Set voice speed to ${spd}x`}
+                    >
+                      {spd}x
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               {/* 3. LIVE MICROPHONE (Voice Chat) */}
               <MicrophoneControl roomId={roomId} />

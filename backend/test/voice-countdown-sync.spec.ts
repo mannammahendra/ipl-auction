@@ -78,7 +78,7 @@ export function formatRupeesSpoken(amount: number): string {
 // Test harness mirroring frontend/src/lib/voice.ts AuctioneerVoiceService
 class AuctioneerVoiceLogicTestHarness {
   public enabled: boolean = true;
-  public rate: number = 2.0; // Required 2.0x default
+  public rate: number = 3.0; // Required 2.0x default
   public pitch: number = 1.0; // 1.0x normal pitch
   public volume: number = 0.85; // 85% volume
   public countdownEnabled: boolean = true;
@@ -108,18 +108,12 @@ class AuctioneerVoiceLogicTestHarness {
 
   public getCountdownSpokenText(seconds: number): string | null {
     switch (seconds) {
-      case 5:
-        return 'Five';
-      case 4:
-        return 'Four';
       case 3:
         return 'Three';
       case 2:
         return 'Two';
       case 1:
         return 'One';
-      case 0:
-        return 'Zero';
       default:
         return null;
     }
@@ -223,7 +217,8 @@ class AuctioneerVoiceLogicTestHarness {
 
   public announceCountdown(seconds: number, lotId?: string, _speedMultiplier: number = 1.0): void {
     if (!this.enabled || !this.countdownEnabled) return;
-    if (seconds < 0 || seconds > 5) return;
+    if (seconds < 1 || seconds > 3) return;
+    if (this.currentPriority === "RESULT") return;
 
     if (
       this.currentPriority === 'NOMINATION' ||
@@ -301,11 +296,11 @@ describe('Auction Voice Speed & Countdown Synchronization Test Suite', () => {
   });
 
   // 1. Normal voice announcements use the configured 3.0x speed
-  it('1. normal voice announcements use the configured 2.0x speed by default', () => {
-    expect(voice.getRate()).toBe(2.0);
+  it('1. normal voice announcements use the configured 3.0x speed by default', () => {
+    expect(voice.getRate()).toBe(3.0);
     voice.announceNomination('Virat Kohli', 'Batter', 'lot-1', 20000000);
     expect(voice.spokenUtterances.length).toBe(1);
-    expect(voice.spokenUtterances[0].rate).toBe(2.0);
+    expect(voice.spokenUtterances[0].rate).toBe(3.0);
     expect(voice.spokenUtterances[0].pitch).toBe(1.0);
     expect(voice.spokenUtterances[0].volume).toBe(0.85);
   });
@@ -313,36 +308,36 @@ describe('Auction Voice Speed & Countdown Synchronization Test Suite', () => {
   // 2. Blitz at 1x does not change the voice speed
   it('2. blitz at 1x does not change the voice speed', () => {
     voice.setTimerSpeed(1.0);
-    expect(voice.getRate()).toBe(2.0);
-    voice.announceCountdown(5, 'lot-1', 1.0);
-    expect(voice.spokenUtterances[0].rate).toBe(2.0);
+    expect(voice.getRate()).toBe(3.0);
+    voice.announceCountdown(3, 'lot-1', 1.0);
+    expect(voice.spokenUtterances[0].rate).toBe(3.0);
   });
 
   // 3. Blitz at 2x does not change the voice speed
   it('3. blitz at 2x does not change the voice speed', () => {
     voice.setTimerSpeed(2.0);
-    expect(voice.getRate()).toBe(2.0);
-    voice.announceCountdown(4, 'lot-1', 2.0);
-    expect(voice.spokenUtterances[0].rate).toBe(2.0);
+    expect(voice.getRate()).toBe(3.0);
+    voice.announceCountdown(2, 'lot-1', 2.0);
+    expect(voice.spokenUtterances[0].rate).toBe(3.0);
   });
 
   // 4. Blitz at 3x does not change the voice speed
   it('4. blitz at 3x does not change the voice speed', () => {
     voice.setTimerSpeed(3.0);
-    expect(voice.getRate()).toBe(2.0);
-    voice.announceCountdown(3, 'lot-1', 3.0);
-    expect(voice.spokenUtterances[0].rate).toBe(2.0);
+    expect(voice.getRate()).toBe(3.0);
+    voice.announceCountdown(1, 'lot-1', 3.0);
+    expect(voice.spokenUtterances[0].rate).toBe(3.0);
   });
 
   // 5. Changing blitz speed during speech does not change the active voice rate
   it('5. changing blitz speed during speech does not change the active voice rate', () => {
     voice.announceBid('CSK', 50000000, false, 'lot-1');
-    expect(voice.spokenUtterances[0].rate).toBe(2.0);
+    expect(voice.spokenUtterances[0].rate).toBe(3.0);
 
     // Host accelerates blitz to 1.5x mid-speech
     voice.setTimerSpeed(1.5);
-    expect(voice.getRate()).toBe(2.0);
-    expect(voice.spokenUtterances[0].rate).toBe(2.0);
+    expect(voice.getRate()).toBe(3.0);
+    expect(voice.spokenUtterances[0].rate).toBe(3.0);
   });
 
   // 6. Changing voice speed does not affect the auction timer
@@ -374,18 +369,45 @@ describe('Auction Voice Speed & Countdown Synchronization Test Suite', () => {
   });
 
   // 9. Countdown numbers from 5 to 0 are announced in the correct order when their events remain valid
-  it('9. countdown numbers from 5 to 0 are announced in the correct order', () => {
+  it('9. countdown numbers from 3 to 1 are announced in the correct order and 5, 4, 0 are ignored', () => {
     const lotId = 'lot-countdown-test';
-    [5, 4, 3, 2, 1, 0].forEach((sec) => {
+    // 5 and 4 must not announce
+    voice.announceCountdown(5, lotId);
+    voice.announceCountdown(4, lotId);
+    expect(voice.spokenUtterances.length).toBe(0);
+
+    // 3, 2, 1 must announce
+    [3, 2, 1].forEach((sec) => {
       voice.announceCountdown(sec, lotId);
       voice.simulateUtteranceEnd();
     });
 
+    // 0 must not announce
+    voice.announceCountdown(0, lotId);
+
     const texts = voice.spokenUtterances.map((u) => u.text);
-    expect(texts).toEqual(['Five', 'Four', 'Three', 'Two', 'One', 'Zero']);
+    expect(texts).toEqual(['Three', 'Two', 'One']);
     voice.spokenUtterances.forEach((u) => {
-      expect(u.rate).toBe(2.0);
+      expect(u.rate).toBe(3.0);
     });
+  });
+
+  it('supports 2.0x, 3.0x, and 4.0x voice speeds', () => {
+    const multiVoice = new AuctioneerVoiceLogicTestHarness();
+    multiVoice.setRate(2.0);
+    expect(multiVoice.getRate()).toBe(2.0);
+    multiVoice.announceNomination('Rohit Sharma', 'Batter', 'lot-2', 20000000);
+    expect(multiVoice.spokenUtterances[0].rate).toBe(2.0);
+
+    multiVoice.setRate(3.0);
+    expect(multiVoice.getRate()).toBe(3.0);
+    multiVoice.announceBid('RCB', 22000000, false, 'lot-2');
+    expect(multiVoice.spokenUtterances[1].rate).toBe(3.0);
+
+    multiVoice.setRate(4.0);
+    expect(multiVoice.getRate()).toBe(4.0);
+    multiVoice.announceBid('MI', 24000000, false, 'lot-2');
+    expect(multiVoice.spokenUtterances[2].rate).toBe(4.0);
   });
 
   // 10. A new accepted bid during countdown invalidates the old countdown sequence

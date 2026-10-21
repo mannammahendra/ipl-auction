@@ -1,14 +1,15 @@
 // Cricket Auction Voice Announcement Engine
-// Dedicated Single Female English Auctioneer Voice @ 2.0x Speed
+// Dedicated Single Female English Auctioneer Voice @ 3.0x / 4.0x / 2.0x Speeds
 // Independent of blitz countdown timer, zero settings complexity, one-click mute/unmute
+// Strict 3 to 1 countdown sequence with reliable per-second delivery
 
-export type SpeechPriority = 'INFO' | 'COUNTDOWN' | 'NOMINATION' | 'BID' | 'RESULT';
+export type SpeechPriority = 'INFO' | 'NOMINATION' | 'BID' | 'COUNTDOWN' | 'RESULT';
 
 export const PRIORITY_ORDER: Record<SpeechPriority, number> = {
   INFO: 1,
-  COUNTDOWN: 2,
-  NOMINATION: 3,
-  BID: 4,
+  NOMINATION: 2,
+  BID: 3,
+  COUNTDOWN: 4,
   RESULT: 5,
 };
 
@@ -135,7 +136,7 @@ export function formatRupeesSpoken(amount: number): string {
 
 class AuctioneerVoiceService {
   private enabled: boolean = true;
-  private readonly rate: number = 2.0; // Strictly 2.0x normal voice speed
+  private rate: number = 3.0; // Voice speed, default 3.0x, supports 2.0x, 3.0x, 4.0x
   private readonly pitch: number = 1.0; // Normal natural pitch
   private readonly volume: number = 0.85; // 85% volume
   private readonly countdownEnabled: boolean = true;
@@ -160,6 +161,16 @@ class AuctioneerVoiceService {
         const savedEnabled = localStorage.getItem('ipl_voice_enabled');
         if (savedEnabled !== null) {
           this.enabled = savedEnabled === 'true';
+        }
+
+        const savedRate = localStorage.getItem('ipl_voice_rate');
+        if (savedRate) {
+          const parsed = parseFloat(savedRate);
+          if (!isNaN(parsed) && parsed >= 1 && parsed <= 4) {
+            this.rate = parsed;
+          }
+        } else {
+          this.rate = 3.0;
         }
       } catch {}
 
@@ -324,6 +335,16 @@ class AuctioneerVoiceService {
     return this.rate;
   }
 
+  public setRate(rate: number) {
+    const cleanRate = Math.min(4.0, Math.max(1.0, rate || 3.0));
+    this.rate = cleanRate;
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('ipl_voice_rate', String(cleanRate));
+      } catch {}
+    }
+  }
+
   public getPitch(): number {
     return this.pitch;
   }
@@ -406,26 +427,22 @@ class AuctioneerVoiceService {
     }
   }
 
+  // Reset countdown tracking when timer exceeds 3 seconds
   public onTimerTick(remainingSeconds: number) {
-    if (remainingSeconds > 5) {
+    if (remainingSeconds > 3) {
       this.resetCountdown();
     }
   }
 
+  // Announce strictly numbers from 3 to 1 (not 5 to 0)
   public getCountdownSpokenText(seconds: number): string | null {
     switch (seconds) {
-      case 5:
-        return 'Five';
-      case 4:
-        return 'Four';
       case 3:
         return 'Three';
       case 2:
         return 'Two';
       case 1:
         return 'One';
-      case 0:
-        return 'Zero';
       default:
         return null;
     }
@@ -447,12 +464,12 @@ class AuctioneerVoiceService {
     const newPrioNum = PRIORITY_ORDER[priority];
 
     // If higher priority announcement is currently speaking, do not interrupt with lower priority
-    // (Except RESULT which always has highest priority)
+    // (Except RESULT which always has highest priority, or COUNTDOWN when timer is critical)
     if (this.isSpeakingActive && currentPrioNum > newPrioNum && priority !== 'RESULT') {
       return;
     }
 
-    // High priority events (RESULT, BID, NOMINATION) interrupt lower priority speech
+    // High priority events (RESULT, COUNTDOWN, BID, NOMINATION) interrupt lower/equal priority speech
     if (this.isSpeakingActive || window.speechSynthesis.speaking) {
       try {
         window.speechSynthesis.cancel();
@@ -491,7 +508,7 @@ class AuctioneerVoiceService {
       }
     }
 
-    // Apply strict configuration: 2.0x normal voice speed, 1.0x pitch, 0.85 volume
+    // Apply strict configuration: configured voice speed (2.0x, 3.0x, or 4.0x), 1.0x pitch, 0.85 volume
     utterance.rate = this.rate;
     utterance.pitch = this.pitch;
     utterance.volume = this.volume;
@@ -594,18 +611,14 @@ class AuctioneerVoiceService {
     this.speak(text, 'BID');
   }
 
-  // 3. Countdown: 5 down to 0, strictly at 2.0x speed, invalidated immediately on new bids
+  // 3. Countdown: Strictly 3 down to 1 (not 5 to 0), announce each number without skipping
   public announceCountdown(seconds: number, lotId?: string, _speedMultiplier: number = 1.0) {
     void _speedMultiplier;
     if (!this.enabled || !this.countdownEnabled) return;
-    if (seconds < 0 || seconds > 5) return;
+    if (seconds < 1 || seconds > 3) return; // Strictly 3 to 1
 
-    // Critical announcements take precedence: never interrupt nomination, bid, or sale result
-    if (
-      this.currentPriority === 'NOMINATION' ||
-      this.currentPriority === 'BID' ||
-      this.currentPriority === 'RESULT'
-    ) {
+    // Confirmed sale results take precedence over countdown
+    if (this.currentPriority === 'RESULT') {
       return;
     }
 
@@ -630,15 +643,8 @@ class AuctioneerVoiceService {
 
     this.lastAnnouncedCountdownNumber = seconds;
 
-    const capturedGeneration = this.currentDeadlineGeneration;
-    // Microtask dispatch to allow any concurrent bid to take precedence
-    setTimeout(() => {
-      // If deadline generation changed in the interim (new bid arrived), abort stale countdown
-      if (this.currentDeadlineGeneration !== capturedGeneration) {
-        return;
-      }
-      this.speak(spokenText, 'COUNTDOWN');
-    }, 10);
+    // Direct dispatch speaks every countdown number (3, 2, 1) on time
+    this.speak(spokenText, 'COUNTDOWN');
   }
 
   // 4. Confirmed SOLD announcement
