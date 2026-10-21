@@ -106,7 +106,7 @@ npm run dev
 ## 🎮 How to Play with Friends
 
 1. **Visit `http://localhost:3000`** in your browser.
-2. Enter your manager nickname and click **Create Room** (or use the one-click **Quick Demo Room**).
+2. Enter your manager nickname, set a room password, and click **Create Room**.
 3. Copy your unique 6-character room code (e.g. `IPL-LFHB`) and share it with your friends.
 4. Friends visit `http://localhost:3000`, select **Join Room**, enter their name and the room code.
 5. In the **Lobby**:
