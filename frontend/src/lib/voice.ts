@@ -150,7 +150,7 @@ class AuctioneerVoiceService {
   private countdownEnabled: boolean = true;
   private selectedVoiceURI: string | null = null;
   private allVoices: SpeechSynthesisVoice[] = [];
-  private currentUtterance: SpeechSynthesisUtterance | null = null;
+  private activeUtterances = new Set<SpeechSynthesisUtterance>(); // Prevents V8 garbage collection!
   private currentPriority: SpeechPriority | null = null;
   private isSpeakingActive: boolean = false;
   private pendingTimeout: any = null;
@@ -215,47 +215,50 @@ class AuctioneerVoiceService {
         };
       }
 
-      // Proactively unlock speech synthesis on very first touch, click, or key press
+      // Proactively unlock and resume speech synthesis on user interaction
       const autoUnlock = () => {
         this.unlockAudio();
-        window.removeEventListener('click', autoUnlock);
-        window.removeEventListener('touchstart', autoUnlock);
-        window.removeEventListener('pointerdown', autoUnlock);
-        window.removeEventListener('keydown', autoUnlock);
       };
-      window.addEventListener('click', autoUnlock, { once: true });
-      window.addEventListener('touchstart', autoUnlock, { once: true });
-      window.addEventListener('pointerdown', autoUnlock, { once: true });
-      window.addEventListener('keydown', autoUnlock, { once: true });
+      window.addEventListener('click', autoUnlock, { passive: true });
+      window.addEventListener('touchstart', autoUnlock, { passive: true });
+      window.addEventListener('pointerdown', autoUnlock, { passive: true });
+      window.addEventListener('keydown', autoUnlock, { passive: true });
     }
   }
 
   public unlockAudio() {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
     try {
+      this.initVoices();
       if (window.speechSynthesis.paused) {
         window.speechSynthesis.resume();
       }
-      this.initVoices();
-      const warmup = new SpeechSynthesisUtterance('');
-      warmup.volume = 0;
-      window.speechSynthesis.speak(warmup);
     } catch {}
   }
 
   public initVoices() {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
-    this.allVoices = window.speechSynthesis.getVoices() || [];
+    try {
+      const v = window.speechSynthesis.getVoices();
+      if (v && v.length > 0) {
+        this.allVoices = v;
+      }
+    } catch {}
   }
 
   public getVoices(): SpeechSynthesisVoice[] {
     if (this.allVoices.length === 0 && typeof window !== 'undefined' && window.speechSynthesis) {
-      this.allVoices = window.speechSynthesis.getVoices() || [];
+      try {
+        const v = window.speechSynthesis.getVoices();
+        if (v && v.length > 0) {
+          this.allVoices = v;
+        }
+      } catch {}
     }
     return this.allVoices;
   }
 
-  // Select the best available female Indian English voice
+  // Select the best available female Indian English voice, or closest supported English female voice
   public getBestIndianFemaleVoice(): SpeechSynthesisVoice | null {
     const voices = this.getVoices();
     if (!voices || voices.length === 0) return null;
@@ -314,13 +317,20 @@ class AuctioneerVoiceService {
         try {
           window.speechSynthesis.cancel();
         } catch {}
+      } else if (val) {
+        this.unlockAudio();
       }
     }
   }
 
   public toggle(): boolean {
-    this.setEnabled(!this.enabled);
-    return this.enabled;
+    const next = !this.enabled;
+    this.setEnabled(next);
+    if (next) {
+      this.unlockAudio();
+      this.speak('Voice commentary enabled', 'INFO');
+    }
+    return next;
   }
 
   public getRate(): number {
@@ -445,6 +455,7 @@ class AuctioneerVoiceService {
     this.isSpeakingActive = false;
     this.currentPriority = null;
     this.resetCountdown();
+    this.activeUtterances.clear();
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       try {
         window.speechSynthesis.cancel();
@@ -504,16 +515,24 @@ class AuctioneerVoiceService {
       return;
     }
 
+    // Always ensure synthesis is not paused
+    try {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+    } catch {}
+
     const currentPrioNum = this.currentPriority ? PRIORITY_ORDER[this.currentPriority] : 0;
     const newPrioNum = PRIORITY_ORDER[priority];
 
     // If higher priority announcement is currently speaking, do not interrupt with lower priority
-    if (this.isSpeakingActive && currentPrioNum > newPrioNum) {
+    // (Except RESULT which always has highest priority)
+    if (this.isSpeakingActive && currentPrioNum > newPrioNum && priority !== 'RESULT') {
       return;
     }
 
     // High priority events (RESULT, BID, NOMINATION) interrupt lower priority speech
-    if (this.isSpeakingActive) {
+    if (this.isSpeakingActive || window.speechSynthesis.speaking) {
       try {
         window.speechSynthesis.cancel();
       } catch {}
@@ -537,12 +556,19 @@ class AuctioneerVoiceService {
     }, 4500);
 
     const utterance = new SpeechSynthesisUtterance(text);
+    this.activeUtterances.add(utterance); // Prevent V8 garbage collection of utterance
+
     const chosenVoice = this.getBestIndianFemaleVoice();
     if (chosenVoice) {
       utterance.voice = chosenVoice;
-      utterance.lang = chosenVoice.lang || 'en-IN';
+      utterance.lang = chosenVoice.lang;
     } else {
-      utterance.lang = 'en-IN';
+      // Do not force en-IN when no en-IN voice is loaded, use available voice lang or navigator.language
+      const fallbackVoices = this.getVoices();
+      if (fallbackVoices && fallbackVoices.length > 0) {
+        utterance.voice = fallbackVoices[0];
+        utterance.lang = fallbackVoices[0].lang;
+      }
     }
 
     // Apply strict configuration: 3.0x normal voice speed, 1.0x pitch, 0.85 volume
@@ -550,7 +576,12 @@ class AuctioneerVoiceService {
     utterance.pitch = this.pitch;
     utterance.volume = this.volume;
 
+    utterance.onstart = () => {
+      this.isSpeakingActive = true;
+    };
+
     utterance.onend = () => {
+      this.activeUtterances.delete(utterance);
       this.isSpeakingActive = false;
       this.currentPriority = null;
       if (this.prioritySafetyTimeout) {
@@ -560,6 +591,7 @@ class AuctioneerVoiceService {
     };
 
     utterance.onerror = (e) => {
+      this.activeUtterances.delete(utterance);
       if (e.error !== 'interrupted' && e.error !== 'canceled') {
         console.warn('Voice announcement error:', e.error);
       }
@@ -569,16 +601,27 @@ class AuctioneerVoiceService {
         clearTimeout(this.prioritySafetyTimeout);
         this.prioritySafetyTimeout = null;
       }
+      try {
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+      } catch {}
     };
 
-    try {
-      window.speechSynthesis.speak(utterance);
-      this.currentUtterance = utterance;
-    } catch (err) {
-      console.warn('Speech synthesis speak failure:', err);
-      this.isSpeakingActive = false;
-      this.currentPriority = null;
-    }
+    // Chromium cancel-then-speak fix: dispatch speak with micro-delay so cancel doesn't abort it
+    setTimeout(() => {
+      try {
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+        window.speechSynthesis.speak(utterance);
+      } catch (err) {
+        console.warn('Speech synthesis speak failure:', err);
+        this.activeUtterances.delete(utterance);
+        this.isSpeakingActive = false;
+        this.currentPriority = null;
+      }
+    }, 15);
   }
 
   // 1. Upcoming player & base price announcement
@@ -715,13 +758,12 @@ class AuctioneerVoiceService {
     this.speak(text, 'RESULT');
   }
 
-  // 6. Test Voice Announcement Button handler
+  // 6. Test Voice Announcement Button handler - speaks with highest priority so it always sounds
   public testVoice(): void {
     this.unlockAudio();
     const sampleText = 'Next player: Virat Kohli. Base price: 2 Crore. Royal Challengers Bengaluru bids 2 Crore 20 Lakh.';
-    this.speak(sampleText, 'INFO');
+    this.speak(sampleText, 'RESULT');
   }
 }
 
 export const auctioneerVoice = new AuctioneerVoiceService();
-
