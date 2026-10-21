@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { soundFx } from './audio';
 
 export interface User {
   id: string;
@@ -147,7 +146,6 @@ interface AuctionStore {
   currentBids: BidRecord[];
   remainingTimer: number;
   isTimerPaused: boolean;
-  soundEnabled: boolean;
   soldCelebration: { player: Player; team: Team; amount: number } | null;
   unsoldNotice: { player: Player } | null;
   lastError: string | null;
@@ -172,7 +170,6 @@ interface AuctionStore {
   logout: () => void;
   setRoom: (room: Room) => void;
   setTimer: (seconds: number, isPaused?: boolean) => void;
-  setSoundEnabled: (enabled: boolean) => void;
   setLastError: (err: string | null) => void;
 
   // Chat Actions
@@ -217,7 +214,6 @@ export const useAuctionStore = create<AuctionStore>((set) => ({
   currentBids: [],
   remainingTimer: 25,
   isTimerPaused: false,
-  soundEnabled: true,
   soldCelebration: null,
   unsoldNotice: null,
   lastError: null,
@@ -283,10 +279,7 @@ export const useAuctionStore = create<AuctionStore>((set) => ({
       };
     }),
 
-  setSoundEnabled: (enabled) => {
-    soundFx.enabled = enabled;
-    set({ soundEnabled: enabled });
-  },
+
 
   setLastError: (lastError) => set({ lastError }),
 
@@ -342,7 +335,6 @@ export const useAuctionStore = create<AuctionStore>((set) => ({
   },
 
   onBidPlaced: ({ bid, team, amount, timerSeconds }) => {
-    soundFx.playBidChime();
 
     set((state) => {
       const updatedBids = [bid, ...state.currentBids.filter((b) => b.id !== bid.id)];
@@ -400,7 +392,6 @@ export const useAuctionStore = create<AuctionStore>((set) => ({
   },
 
   onPlayerSold: ({ auctionPlayer, winningTeam, soldPrice, squadMember }) => {
-    // Sale sound effects removed per specification
 
     const memberToAdd: SquadMember = {
       ...(squadMember || {}),
@@ -473,7 +464,6 @@ export const useAuctionStore = create<AuctionStore>((set) => ({
   },
 
   onPlayerUnsold: ({ auctionPlayer }) => {
-    // All sounds when player was unsold removed as requested
     set((state) => {
       const updatedAuctionPlayers = state.room?.auctionPlayers
         ? state.room.auctionPlayers.map((ap) =>

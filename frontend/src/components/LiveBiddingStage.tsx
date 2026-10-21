@@ -5,7 +5,6 @@ import { useAuctionStore } from '../lib/store';
 import { socketService } from '../lib/socket';
 import { api } from '../lib/api';
 import { formatRupees, formatTime } from '../lib/formatters';
-import { soundFx } from '../lib/audio';
 import { Gavel, Timer, AlertCircle, TrendingUp, Lock, Zap } from 'lucide-react';
 import TeamLogo from './TeamLogo';
 import { calculateMaxSafeBid, formatRupeesCompact } from './PurseRadarModal';
@@ -31,18 +30,6 @@ export function LiveBiddingStage() {
   const [customBidInput, setCustomBidInput] = useState<string>('');
   const [localError, setLocalError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (
-      remainingTimer <= 3 &&
-      remainingTimer > 0 &&
-      !isTimerPaused &&
-      currentAuctionPlayer &&
-      currentAuctionPlayer.status === 'NOMINATED'
-    ) {
-      soundFx.playWarningTick();
-    }
-  }, [remainingTimer, isTimerPaused, currentAuctionPlayer]);
 
   if (!room || !currentAuctionPlayer || currentAuctionPlayer.status === 'SOLD' || currentAuctionPlayer.status === 'UNSOLD') {
     return null;

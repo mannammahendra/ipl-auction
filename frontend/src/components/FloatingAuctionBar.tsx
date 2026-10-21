@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { useAuctionStore } from '../lib/store';
 import { socketService } from '../lib/socket';
 import { formatRupees, formatTime } from '../lib/formatters';
-import { soundFx } from '../lib/audio';
 import TeamLogo from './TeamLogo';
 import { Timer } from 'lucide-react';
 import { PlayerPortrait } from './PlayerPortrait';
@@ -62,7 +61,6 @@ export const FloatingAuctionBar: React.FC = React.memo(function FloatingAuctionB
     if (!isEligible || !myTeam || biddingLoading) return;
 
     setBiddingLoading(true);
-    soundFx.playGavel();
     socketService.placeBid(room.id, myTeam.id, nextBid);
 
     setTimeout(() => {

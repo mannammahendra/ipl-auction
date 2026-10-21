@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuctionStore, Team, RoomMember } from '../../../lib/store';
 import { api } from '../../../lib/api';
 import { socketService } from '../../../lib/socket';
-import { soundFx } from '../../../lib/audio';
 import { Navbar } from '../../../components/Navbar';
 import { formatRupees } from '../../../lib/formatters';
 import {
@@ -283,10 +282,7 @@ export default function LobbyPage() {
     setStartingAuction(true);
     setError(null);
     try {
-      // 1. Immediately unlock audio with authentic host tap
-      try {
-                soundFx.playGavel();
-      } catch {}
+
 
       // 2. Prefetch arena route
       router.prefetch(`/auction/${room.id}`);

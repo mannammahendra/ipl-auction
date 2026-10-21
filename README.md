@@ -38,9 +38,7 @@ Built with **Next.js 14**, **NestJS**, **WebSockets (Socket.IO)**, **Prisma ORM*
 - **Rich Seed Database with 40+ Top IPL Superstars**:
   - Marquee: Virat Kohli, Jasprit Bumrah, Rohit Sharma, Pat Cummins, Heinrich Klaasen, Travis Head, Rashid Khan, Jos Buttler, Rishabh Pant, Hardik Pandya, Suryakumar Yadav, Mitchell Starc.
   - Capped & Uncapped Batsmen, All-rounders, Bowlers, Wicketkeepers with authentic base prices and career statistics.
-- **Native Web Audio API Sound Synthesizer**:
-  - 100% offline, zero-asset sound generation.
-  - Wooden Gavel hammer strikes when player is SOLD, pleasant crystal bell on new bids, urgent warning beeps in the final 5 seconds, and victory fanfares.
+
 - **Host Auctioneer Command Center**:
   - Start Auction, Pause, Resume, Sell Now (Hammer Down), Mark Unsold, Skip Player, and **Undo Last Action** (complete state rollback: refunds winning team's purse, removes player from squad, and returns player to the podium).
 - **Squad Inspection Drawer**:
@@ -54,8 +52,7 @@ Built with **Next.js 14**, **NestJS**, **WebSockets (Socket.IO)**, **Prisma ORM*
                              ┌──────────────────────────────┐
                              │     Next.js 14 Frontend      │
                              │ React + Tailwind + Zustand   │
-                             │   Web Audio FX Synthesizer   │
-                             └──────────────┬───────────────┘
+                                                          └──────────────┬───────────────┘
                                             │
                               WebSocket (Socket.IO) & HTTP
                                             │

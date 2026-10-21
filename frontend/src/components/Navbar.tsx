@@ -3,13 +3,13 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useAuctionStore } from '../lib/store';
-import { Volume2, VolumeX, Copy, Check, Trophy } from 'lucide-react';
+import { Copy, Check, Trophy } from 'lucide-react';
 import { formatRupees } from '../lib/formatters';
 
 import TeamLogo from './TeamLogo';
 
 export function Navbar({ onOpenSquads }: { onOpenSquads?: () => void }) {
-  const { user, room, soundEnabled, setSoundEnabled } = useAuctionStore();
+  const { user, room } = useAuctionStore();
   const [copied, setCopied] = useState(false);
 
   const handleCopyCode = () => {
@@ -82,14 +82,6 @@ export function Navbar({ onOpenSquads }: { onOpenSquads?: () => void }) {
         )}
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            title={soundEnabled ? 'Mute Auction Sound FX' : 'Enable Auction Sound FX'}
-            className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-amber-400 transition-colors"
-          >
-            {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-amber-400" /> : <VolumeX className="w-3.5 h-3.5 text-slate-500" />}
-          </button>
-
           {user ? (
             <div className="flex items-center gap-1.5">
               <div className="w-7 h-7 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[11px] font-bold text-slate-200">
