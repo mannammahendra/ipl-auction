@@ -296,7 +296,7 @@ function LandingContent() {
 
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                    Room Password (Optional)
+                    Room Password (Mandatory)
                   </label>
                   <div className="relative">
                     <input
@@ -371,7 +371,7 @@ function LandingContent() {
 
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
-                    Room Password (Optional)
+                    Room Password (Mandatory)
                   </label>
                   <div className="relative">
                     <input
@@ -443,4 +443,5 @@ export default function LandingPage() {
     </Suspense>
   );
 }
+
 
