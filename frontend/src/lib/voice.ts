@@ -412,7 +412,8 @@ class AuctioneerVoiceService {
   }
 
   // Timer speed changes must NEVER change voice speed
-  public setTimerSpeed(_multiplier: number) {
+  public setTimerSpeed(_multiplier?: number) {
+    void _multiplier;
     // Intentionally independent from blitz speed
   }
 
@@ -632,6 +633,7 @@ class AuctioneerVoiceService {
 
   // 3. Countdown: 5 down to 0, strictly at 3.0x speed, invalidated immediately on new bids
   public announceCountdown(seconds: number, lotId?: string, _speedMultiplier: number = 1.0) {
+    void _speedMultiplier;
     if (!this.enabled || !this.countdownEnabled) return;
     if (seconds < 0 || seconds > 5) return;
 
@@ -722,3 +724,4 @@ class AuctioneerVoiceService {
 }
 
 export const auctioneerVoice = new AuctioneerVoiceService();
+

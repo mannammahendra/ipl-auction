@@ -241,3 +241,4 @@ describe('Auction Controls DTO Validation', () => {
     expect((await validate(empty)).length).toBeGreaterThan(0);
   });
 });
+

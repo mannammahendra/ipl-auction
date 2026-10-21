@@ -484,3 +484,4 @@ describe('Auction Voice Speed & Countdown Synchronization Test Suite', () => {
     expect(formatRupeesSpoken(5000000)).toBe('50 Lakh');
   });
 });
+

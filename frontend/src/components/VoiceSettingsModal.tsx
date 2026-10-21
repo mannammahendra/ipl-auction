@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Volume2, VolumeX, X, RotateCcw, Play, Check, Settings2, Sparkles, Mic } from 'lucide-react';
+import { Volume2, VolumeX, X, RotateCcw, Play, Settings2 } from 'lucide-react';
 import { auctioneerVoice } from '../lib/voice';
 
 interface VoiceSettingsModalProps {
@@ -288,7 +288,7 @@ export const VoiceSettingsModal: React.FC<VoiceSettingsModalProps> = ({
             <div>
               <p className="font-semibold text-xs text-slate-200">5-to-0 Countdown Voice</p>
               <p className="text-[11px] text-slate-400">
-                Speaks "Five, Four, Three, Two, One, Zero" synchronized with timer
+                Speaks &quot;Five, Four, Three, Two, One, Zero&quot; synchronized with timer
               </p>
             </div>
             <button
@@ -337,3 +337,4 @@ export const VoiceSettingsModal: React.FC<VoiceSettingsModalProps> = ({
     </div>
   );
 };
+

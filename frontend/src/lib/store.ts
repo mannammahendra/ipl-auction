@@ -99,9 +99,9 @@ export interface Room {
   bidTimerSeconds: number;
   snipeExtensionSeconds: number;
   currentRound?: number;
-  currentAuctionPlayerId?: string;
+  currentAuctionPlayerId?: string | null;
   currentBidAmount?: number;
-  currentBidTeamId?: string;
+  currentBidTeamId?: string | null;
   isPaused: boolean;
   members: RoomMember[];
   teams: Team[];
