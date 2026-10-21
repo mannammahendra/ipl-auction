@@ -195,3 +195,4 @@ export const MicrophoneControl: React.FC<MicrophoneControlProps> = ({ roomId }) 
     </div>
   );
 };
+

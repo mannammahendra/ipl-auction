@@ -16,6 +16,8 @@ import { SquadInspectionDrawer } from '../../../components/SquadInspectionDrawer
 import { AuctionPoolRecordsModal } from '../../../components/AuctionPoolRecordsModal';
 import { MicrophoneControl } from '../../../components/MicrophoneControl';
 import { voiceChatManager } from '../../../lib/voiceChat';
+import { auctioneerVoice } from '../../../lib/voice';
+import { VoiceSettingsModal } from '../../../components/VoiceSettingsModal';
 import { RoomChatDrawer } from '../../../components/RoomChatDrawer';
 import { FloatingAuctionBar } from '../../../components/FloatingAuctionBar';
 import { PurseRadarModal } from '../../../components/PurseRadarModal';
@@ -23,6 +25,9 @@ import { SquadPosterModal } from '../../../components/SquadPosterModal';
 import TeamLogo from '../../../components/TeamLogo';
 import {
   AlertCircle,
+  Volume2,
+  VolumeX,
+  Settings2,
   ArrowLeft,
   Trophy,
   Activity,
@@ -74,6 +79,16 @@ export default function LiveAuctionArenaPage() {
   const [copiedCode, setCopiedCode] = useState(false);
   const [bidAlert, setBidAlert] = useState<string | null>(null);
   const [hostAlert, setHostAlert] = useState<{ id: string; message: string; type?: string } | null>(null);
+
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [voiceSettingsOpen, setVoiceSettingsOpen] = useState(false);
+  const lastAnnouncedPlayerIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    setVoiceEnabled(auctioneerVoice.isEnabled());
+    auctioneerVoice.unlockAudio();
+  }, []);
+
 
   const triggerHostAlert = (message: string, type?: string) => {
     setHostAlert({ id: String(Date.now()), message, type });
@@ -128,7 +143,29 @@ export default function LiveAuctionArenaPage() {
 
 
 
-        setLoading(false); // Instant render - never leave user staring at a spinner
+                // Vocalize current player if fresh auction start (no bids yet placed, not reconnecting mid-lot)
+        if (
+          roomData.status === 'AUCTION_ACTIVE' &&
+          roomData.currentAuctionPlayer?.status === 'NOMINATED' &&
+          roomData.currentAuctionPlayer?.player &&
+          (!roomData.currentBidAmount || roomData.currentBidAmount === 0)
+        ) {
+          const cap = roomData.currentAuctionPlayer;
+          const canonicalId = cap.id || cap.player.id;
+          if (canonicalId && canonicalId !== lastAnnouncedPlayerIdRef.current) {
+            lastAnnouncedPlayerIdRef.current = canonicalId;
+            setTimeout(() => {
+              auctioneerVoice.announceNomination(
+                cap.player.name,
+                cap.player.role,
+                canonicalId,
+                cap.basePrice || cap.player.basePrice,
+              );
+            }, 300);
+          }
+        }
+
+setLoading(false); // Instant render - never leave user staring at a spinner
 
         const socket = socketService.connect(storedToken || '');
         socketService.joinRoom(roomData.id);
@@ -177,6 +214,21 @@ export default function LiveAuctionArenaPage() {
             useAuctionStore.getState().setSpeedMultiplier(data.speedMultiplier);
           }
 
+          auctioneerVoice.onTimerTick(data.remainingSeconds);
+
+          const currentRoom = useAuctionStore.getState().room;
+          const currentAP = useAuctionStore.getState().currentAuctionPlayer;
+          const isAuctionActive = (currentRoom?.status === 'AUCTION_ACTIVE' || !currentRoom?.status) && !currentRoom?.isPaused;
+          const isPlayerNominated = currentAP?.status === 'NOMINATED';
+
+          // Countdown 5 to 0 numbers announced strictly at configured 3.0x voice speed
+          if (isAuctionActive && isPlayerNominated && data.remainingSeconds <= 5 && data.remainingSeconds >= 0) {
+            auctioneerVoice.announceCountdown(data.remainingSeconds, currentAP?.id, data.speedMultiplier || 1.0);
+          } else if (data.remainingSeconds > 5) {
+            auctioneerVoice.resetCountdown();
+          }
+
+
           if (data.remainingSeconds === 0) {
             clearZeroFallback();
             const activePlayerId = useAuctionStore.getState().currentAuctionPlayer?.id;
@@ -195,24 +247,89 @@ export default function LiveAuctionArenaPage() {
         socket.on('bid_placed', (data: any) => {
           clearZeroFallback();
           onBidPlaced(data);
+          const teamRaw =
+            data.team?.name ||
+            data.team?.shortName ||
+            data.bid?.team?.name ||
+            data.bid?.team?.shortName ||
+            data.bidderName;
+          const amount = data.amount || data.bid?.amount;
+          const lotId = data.auctionPlayerId || useAuctionStore.getState().currentAuctionPlayer?.id;
+
+          if (teamRaw && amount) {
+            auctioneerVoice.announceBid(teamRaw, amount, false, lotId);
+          }
         });
 
         // 3. Player nominated: Update podium and auction state
         socket.on('player_nominated', (data: any) => {
           clearZeroFallback();
           onPlayerNominated(data);
+          const ap = data.auctionPlayer;
+          const p = ap?.player;
+          const canonicalId = ap?.id || p?.id;
+          const playerName = p?.name || ap?.name;
+          const playerRole = p?.role || ap?.role;
+          const basePrice = ap?.basePrice || p?.basePrice || 2000000;
+          if (playerName) {
+            lastAnnouncedPlayerIdRef.current = canonicalId;
+            auctioneerVoice.announceNomination(playerName, playerRole, canonicalId, basePrice);
+          }
         });
 
         // 4. Player sold: Update store and trigger celebration
         socket.on('player_sold', (data: any) => {
           clearZeroFallback();
           onPlayerSold(data);
+          auctioneerVoice.stopCountdown();
+
+          const currentRoom = useAuctionStore.getState().room;
+          const currentAP = useAuctionStore.getState().currentAuctionPlayer;
+
+          const winningTeam =
+            data.winningTeam ||
+            currentRoom?.teams?.find(
+              (t: any) =>
+                t.id === data.auctionPlayer?.soldToTeamId ||
+                t.id === data.squadMember?.teamId ||
+                t.id === data.auctionPlayer?.soldToTeam?.id,
+            ) ||
+            data.auctionPlayer?.soldToTeam ||
+            data.squadMember?.team;
+
+          const teamName =
+            winningTeam?.name ||
+            winningTeam?.shortName ||
+            data.team?.name ||
+            data.team?.shortName ||
+            'Winning Franchise';
+
+          const playerName =
+            data.auctionPlayer?.player?.name ||
+            data.squadMember?.player?.name ||
+            currentAP?.player?.name ||
+            'Player';
+
+          const soldPrice = data.soldPrice || data.auctionPlayer?.soldPrice || currentRoom?.currentBidAmount || 0;
+
+          lastAnnouncedPlayerIdRef.current = null;
+          auctioneerVoice.announceSale(playerName, teamName, soldPrice, data.auctionPlayer?.id);
         });
 
         // 5. Unsold: Update store
         socket.on('player_unsold', (data: any) => {
           clearZeroFallback();
           onPlayerUnsold(data);
+          auctioneerVoice.stopCountdown();
+
+          const currentAP = useAuctionStore.getState().currentAuctionPlayer;
+          const playerName =
+            data.auctionPlayer?.player?.name ||
+            currentAP?.player?.name ||
+            'Player';
+
+          lastAnnouncedPlayerIdRef.current = null;
+          auctioneerVoice.announceUnsold(playerName, data.auctionPlayer?.id);
         });
 
         socket.on('auction_paused', (data: any) => {
@@ -258,6 +375,7 @@ export default function LiveAuctionArenaPage() {
         });
 
         socket.on('auction_ended', (data: any) => {
+          auctioneerVoice.stop();
           if (data?.room) {
             setRoom(data.room);
           }
@@ -265,6 +383,7 @@ export default function LiveAuctionArenaPage() {
         });
 
         socket.on('auction_completed', (data: any) => {
+          auctioneerVoice.stop();
           if (data?.room) {
             setRoom(data.room);
           }
@@ -378,6 +497,10 @@ export default function LiveAuctionArenaPage() {
         socket.off('error');
       }
       voiceChatManager.stopVoice();
+      auctioneerVoice.stop();
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
 
     };
   }, [roomId]);
@@ -508,7 +631,42 @@ export default function LiveAuctionArenaPage() {
                 </span>
               </button>
 
-              {/* 2. LIVE MICROPHONE (Voice Chat) */}
+                            {/* 2. VOICE COMMENTARY MUTE / UNMUTE (3.0x Default) */}
+              <button
+                onClick={() => {
+                  const next = auctioneerVoice.toggle();
+                  setVoiceEnabled(next);
+                }}
+                className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-bold border transition-all active:scale-95 shrink-0 whitespace-nowrap shadow-sm ${
+                  voiceEnabled
+                    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/25'
+                    : 'bg-rose-500/15 text-rose-300 border-rose-500/40 hover:bg-rose-500/25'
+                }`}
+                title={voiceEnabled ? 'Mute Voice Commentary (3.0x)' : 'Unmute Voice Commentary'}
+              >
+                {voiceEnabled ? (
+                  <>
+                    <Volume2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>Voice 3x</span>
+                  </>
+                ) : (
+                  <>
+                    <VolumeX className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                    <span>Muted</span>
+                  </>
+                )}
+              </button>
+
+              {/* VOICE SETTINGS BUTTON */}
+              <button
+                onClick={() => setVoiceSettingsOpen(true)}
+                className="p-1 rounded-md bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-all active:scale-95 shrink-0 shadow-sm"
+                title="Voice Announcement Settings"
+              >
+                <Settings2 className="w-3.5 h-3.5 text-amber-400" />
+              </button>
+
+              {/* 3. LIVE MICROPHONE (Voice Chat) */}
               <MicrophoneControl roomId={roomId} />
 
               {/* 3. ROOM MESSAGES / CHAT */}
@@ -729,6 +887,11 @@ export default function LiveAuctionArenaPage() {
         isOpen={!!squadPosterTeam}
         onClose={() => setSquadPosterTeam(null)}
         team={squadPosterTeam}
+      />
+          <VoiceSettingsModal
+        isOpen={voiceSettingsOpen}
+        onClose={() => setVoiceSettingsOpen(false)}
+        onSettingsChanged={() => setVoiceEnabled(auctioneerVoice.isEnabled())}
       />
     </div>
   );

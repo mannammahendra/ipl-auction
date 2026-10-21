@@ -340,3 +340,4 @@ class VoiceChatManager {
 }
 
 export const voiceChatManager = new VoiceChatManager();
+
