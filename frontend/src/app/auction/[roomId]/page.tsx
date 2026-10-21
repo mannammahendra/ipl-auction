@@ -214,6 +214,7 @@ export default function LiveAuctionArenaPage() {
           }
 
           if (data.remainingSeconds === 0) {
+            auctioneerVoice.stopCountdown();
             clearZeroFallback();
             const activePlayerId = useAuctionStore.getState().currentAuctionPlayer?.id;
             zeroFallbackTimeoutRef.current = setTimeout(() => {

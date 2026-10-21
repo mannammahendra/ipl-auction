@@ -195,6 +195,7 @@ class AuctioneerVoiceLogicTestHarness {
         return;
       }
       this.currentPriority = 'COUNTDOWN';
+      this.cancelledCount++;
     }
 
     this.isSpeakingActive = true;
@@ -212,7 +213,7 @@ class AuctioneerVoiceLogicTestHarness {
     this.logs.push(`[Speech] Finished speaking`);
   }
 
-  // 1. Timer: Countdown numbers ONLY 3, 2, 1 at 3.0x speed
+  // 1. Timer: Countdown numbers ONLY 3, 2, 1 at 3.0x speed, synchronized with ticks
   public announceCountdown(seconds: number, lotId?: string, speedMultiplier: number = 1.0, mockNow?: number) {
     this.logs.push(`[Countdown] Event received: remainingSeconds=${seconds}, blitz=${speedMultiplier}x, lotId=${lotId || 'none'}`);
 
@@ -246,15 +247,8 @@ class AuctioneerVoiceLogicTestHarness {
       return;
     }
 
-    const now = mockNow !== undefined ? mockNow : Date.now();
-    const timeSinceLastCountdown = now - this.lastCountdownSpokenAt;
-    if (this.currentPriority === 'COUNTDOWN' && this.isSpeakingActive && timeSinceLastCountdown < 320) {
-      this.logs.push(`[Countdown] Skipped number ${seconds}: browser speech synthesis still rendering previous digit (${timeSinceLastCountdown}ms elapsed)`);
-      return;
-    }
-
     this.lastAnnouncedCountdownNumber = seconds;
-    this.lastCountdownSpokenAt = now;
+    this.lastCountdownSpokenAt = mockNow !== undefined ? mockNow : Date.now();
 
     const spokenText = this.getCountdownSpokenText(seconds);
     if (spokenText) {

@@ -374,13 +374,57 @@ class AuctioneerVoiceService {
     return { score, isNatural, isBritish };
   }
 
-  // Get active Ellie Goulding voice profile
-  public getActiveVoiceProfile(): { voice: SpeechSynthesisVoice | null; pitch: number; rate: number } {
+  // Score voice specifically for instant zero-latency countdown ticks (3, 2, 1)
+  private scoreCountdownVoice(voice: SpeechSynthesisVoice): { score: number; isNatural: boolean; isBritish: boolean } {
+    const n = voice.name.toLowerCase();
+    const lang = voice.lang.toLowerCase();
+    let score = 0;
+
+    // Must be local offline voice to eliminate cloud streaming network latency
+    if (voice.localService === true) score += 500;
+    if (n.includes('desktop')) score += 400;
+
+    // Prefer English
+    if (lang.includes('en-gb') || lang.includes('en_gb') || lang.includes('uk')) {
+      score += 250;
+    } else if (lang.startsWith('en')) {
+      score += 180;
+    }
+
+    // Female voice preferred to match voice tone
+    if (this.checkFemale(voice.name)) score += 150;
+
+    // Disfavor online cloud voices for countdown to avoid 300-500ms network buffering delay
+    if (n.includes('online (natural)') || (voice.localService === false && n.includes('natural'))) {
+      score -= 900;
+    }
+
+    return { score, isNatural: false, isBritish: lang.startsWith('en') };
+  }
+
+  // Get active voice profile (for countdown ticks or standard announcements)
+  public getActiveVoiceProfile(forCountdown: boolean = false): { voice: SpeechSynthesisVoice | null; pitch: number; rate: number } {
     if (this.allVoices.length === 0) {
       this.initVoices();
     }
     if (this.allVoices.length === 0) {
       return { voice: null, pitch: this.pitch, rate: 3.0 };
+    }
+
+    if (forCountdown) {
+      // For countdown ticks (3, 2, 1), prioritize local offline voices with 0ms network latency
+      const localVoices = this.allVoices.filter((v) => v.localService === true || v.name.toLowerCase().includes('desktop'));
+      const pool = localVoices.length > 0 ? localVoices : this.allVoices;
+      const scoredCountdown = pool.map((v) => ({
+        voice: v,
+        ...this.scoreCountdownVoice(v),
+      })).sort((a, b) => b.score - a.score);
+
+      return {
+        voice: scoredCountdown[0]?.voice || null,
+        pitch: this.pitch,
+        rate: 3.0,
+      };
     }
 
     const scored = this.allVoices.map((v) => ({
@@ -507,6 +551,13 @@ class AuctioneerVoiceService {
         return;
       }
       this.currentPriority = 'COUNTDOWN';
+      // Preempt any prior countdown digit to guarantee zero FIFO queue delay
+      try {
+        window.speechSynthesis.cancel();
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+      } catch (e) {}
     }
 
     if (this.pendingTimeout) {
@@ -519,7 +570,8 @@ class AuctioneerVoiceService {
     }
 
     const utterance = new SpeechSynthesisUtterance(text);
-    const profile = this.getActiveVoiceProfile();
+    const isCountdown = priority === 'COUNTDOWN';
+    const profile = this.getActiveVoiceProfile(isCountdown);
 
     if (profile.voice) {
       utterance.voice = profile.voice;
@@ -566,7 +618,7 @@ class AuctioneerVoiceService {
     };
 
     // Fast 3.0x speech safety timeouts (prevents locks without waiting)
-    const safetyMs = priority === 'COUNTDOWN' ? 450 : priority === 'BID' ? 800 : 2000;
+    const safetyMs = priority === 'COUNTDOWN' ? 400 : priority === 'BID' ? 800 : 2000;
     this.prioritySafetyTimeout = setTimeout(() => {
       this.isSpeakingActive = false;
       if (this.currentPriority === priority) {
@@ -578,11 +630,23 @@ class AuctioneerVoiceService {
       if (window.speechSynthesis.paused) {
         window.speechSynthesis.resume();
       }
-      window.speechSynthesis.speak(utterance);
+      if (priority === 'COUNTDOWN') {
+        // 12ms micro-delay ensures Chrome's cancel() queue clear completes
+        // before the new digit begins, guaranteeing immediate start without being dropped
+        setTimeout(() => {
+          try {
+            if (this.currentPriority === 'COUNTDOWN' && this.enabled) {
+              window.speechSynthesis.speak(utterance);
+            }
+          } catch (e) {}
+        }, 12);
+      } else {
+        window.speechSynthesis.speak(utterance);
+      }
     } catch (e) {}
   }
 
-  // 1. Timer: Announce countdown numbers (only 3, 2, 1) at 3.0x speed
+  // 1. Timer: Announce countdown numbers (only 3, 2, 1) strictly synchronized with timer ticks
   public announceCountdown(seconds: number, lotId?: string, speedMultiplier: number = 1.0) {
     console.log(`[Countdown] Event received: remainingSeconds=${seconds}, blitz=${speedMultiplier}x, lotId=${lotId || 'none'}`);
 
@@ -617,17 +681,8 @@ class AuctioneerVoiceService {
       return;
     }
 
-    // Check if voice is genuinely still active from a previous countdown number
-    const now = Date.now();
-    const timeSinceLastCountdown = now - this.lastCountdownSpokenAt;
-    // Single digit at 3.0x takes ~120ms. If at least 320ms have passed, the user has heard the previous digit.
-    if (this.currentPriority === 'COUNTDOWN' && this.isSpeakingActive && timeSinceLastCountdown < 320) {
-      console.warn(`[Countdown] Skipped number ${seconds}: browser speech synthesis still rendering previous digit (${timeSinceLastCountdown}ms elapsed)`);
-      return;
-    }
-
     this.lastAnnouncedCountdownNumber = seconds;
-    this.lastCountdownSpokenAt = now;
+    this.lastCountdownSpokenAt = Date.now();
 
     const spokenText = this.getCountdownSpokenText(seconds);
     if (spokenText) {
