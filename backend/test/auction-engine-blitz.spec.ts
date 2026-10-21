@@ -1,18 +1,18 @@
 import { describe, it, expect } from 'vitest';
 
-describe('Auction Engine 2x Blitz Countdown & Transition Integrity', () => {
-  it('sequentially emits every countdown second without skips when 2x Blitz has timer jitter', () => {
+describe('Auction Engine Blitz Countdown & Transition Integrity', () => {
+  it('sequentially emits every countdown second without skips when 1.5x Blitz has timer jitter', () => {
     const emittedTicks: number[] = [];
-    const speed = 2.0;
+    const speed = 1.5;
     const durationSeconds = 5;
     const startTime = 10000;
-    const timerEndsAt = startTime + Math.round((durationSeconds * 1000) / speed); // 12500ms (2.5s duration)
+    const timerEndsAt = startTime + Math.round((durationSeconds * 1000) / speed); // 13333ms (~3.33s duration)
 
     let remainingSeconds = durationSeconds;
     emittedTicks.push(remainingSeconds); // Initial broadcast at t=0
 
-    // Simulate intervals with typical Node.js jitter (e.g. 510ms, 495ms, 540ms, 480ms, 520ms)
-    const tickOffsets = [510, 1005, 1545, 2025, 2530];
+    // Simulate intervals with typical Node.js jitter (e.g. 670ms, 1340ms, 2010ms, 2680ms, 3350ms)
+    const tickOffsets = [670, 1340, 2010, 2680, 3350];
 
     for (const offset of tickOffsets) {
       const currentNow = startTime + offset;

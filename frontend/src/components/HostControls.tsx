@@ -76,15 +76,13 @@ export const HostControls = React.memo(function HostControls() {
   };
 
   const handleBlitzClick = () => {
-    // Cycle: 1x -> 1.25x -> 1.5x -> 2x -> 1x
+    // Cycle: 1x -> 1.25x -> 1.5x -> 1x (2x Blitz completely removed)
     const current = speedMultiplier || 1.0;
     let nextSpeed = 1.25;
     if (current < 1.1) {
       nextSpeed = 1.25;
     } else if (current < 1.35) {
       nextSpeed = 1.5;
-    } else if (current < 1.75) {
-      nextSpeed = 2.0;
     } else {
       nextSpeed = 1.0;
     }
@@ -199,7 +197,7 @@ export const HostControls = React.memo(function HostControls() {
 
                   <button
                     onClick={handleBlitzClick}
-                    title={`Blitz Speed: Currently ${speedMultiplier || 1}x. Click to change speed (1.25x -> 1.5x -> 2x -> 1x)`}
+                    title={`Blitz Speed: Currently ${speedMultiplier || 1}x. Click to change speed (1.25x -> 1.5x -> 1x)`}
                     className={`flex items-center gap-1 px-2.5 py-1.5 min-h-[34px] rounded-lg font-bold text-xs transition-all active:scale-95 whitespace-nowrap touch-manipulation ${
                       (speedMultiplier || 1) > 1
                         ? 'bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/30 ring-1 ring-amber-300'

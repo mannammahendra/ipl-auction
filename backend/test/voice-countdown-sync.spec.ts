@@ -570,7 +570,7 @@ describe('Auction Voice Fix — Timer (3, 2, 1), Live Bids, and Sale Announcemen
       expect(harness.spokenUtterances[3]).toMatchObject({ text: 'MS Dhoni sold to CSK.', rate: 3.0 });
     });
 
-    it('speaks numbers 3, 2, 1 quickly and sequentially following the timer at 5.0x speed at 1x and 2x Blitz', () => {
+    it('speaks numbers 3, 2, 1 quickly and sequentially following the timer at 5.0x speed at 1x and 1.5x Blitz', () => {
       // 1x Normal mode
       harness.resetCountdown();
       harness.spokenUtterances = [];
@@ -581,11 +581,11 @@ describe('Auction Voice Fix — Timer (3, 2, 1), Live Bids, and Sale Announcemen
       expect(harness.spokenUtterances.map((u) => u.text)).toEqual(['3', '2', '1']);
       expect(harness.spokenUtterances.every((u) => u.rate === 5.0)).toBe(true);
 
-      // 2x Blitz mode
+      // 1.5x Blitz mode (max supported blitz speed, 2x removed)
       harness.resetCountdown();
       harness.spokenUtterances = [];
       [3, 2, 1].forEach((sec) => {
-        harness.announceCountdown(sec, 'lot-2', 2.0);
+        harness.announceCountdown(sec, 'lot-2', 1.5);
         harness.simulateUtteranceEnd();
       });
       expect(harness.spokenUtterances.map((u) => u.text)).toEqual(['3', '2', '1']);

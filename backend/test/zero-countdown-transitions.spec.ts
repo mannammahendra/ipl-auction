@@ -6,7 +6,6 @@ describe('Zero Countdown & Blitz Speed Transition Integrity Suite', () => {
     { label: 'Normal (1.0x)', speed: 1.0, expectedDurationMs: (sec: number) => sec * 1000 },
     { label: 'Blitz 1.25x', speed: 1.25, expectedDurationMs: (sec: number) => Math.round((sec * 1000) / 1.25) },
     { label: 'Blitz 1.5x', speed: 1.5, expectedDurationMs: (sec: number) => Math.round((sec * 1000) / 1.5) },
-    { label: 'Blitz 2.0x', speed: 2.0, expectedDurationMs: (sec: number) => Math.round((sec * 1000) / 2.0) },
   ];
 
   describe('1. Speed & Deadline Calculations across Normal and Blitz Multipliers', () => {
@@ -240,9 +239,6 @@ describe('Zero Countdown & Blitz Speed Transition Integrity Suite', () => {
         } else if (speed === 1.5) {
           expect(soldDelayMs).toBe(2667);
           expect(unsoldDelayMs).toBe(1667);
-        } else if (speed === 2.0) {
-          expect(soldDelayMs).toBe(2000);
-          expect(unsoldDelayMs).toBe(1250);
         }
 
         expect(soldDelayMs).toBeGreaterThanOrEqual(1000);

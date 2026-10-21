@@ -135,12 +135,17 @@ describe('Purse Radar & Max Safe Bid Calculations', () => {
 describe('Auction Controls DTO Validation', () => {
   it('validates SetSpeedDto within safe limits', async () => {
     const valid1 = plainToInstance(SetSpeedDto, { speedMultiplier: 1.0 });
-    const valid2 = plainToInstance(SetSpeedDto, { speedMultiplier: 2.0 });
+    const valid2 = plainToInstance(SetSpeedDto, { speedMultiplier: 1.25 });
     const valid3 = plainToInstance(SetSpeedDto, { speedMultiplier: 1.5 });
 
     expect((await validate(valid1)).length).toBe(0);
     expect((await validate(valid2)).length).toBe(0);
     expect((await validate(valid3)).length).toBe(0);
+
+    // 2.0x Blitz is completely removed and invalid
+    const invalid2x = plainToInstance(SetSpeedDto, { speedMultiplier: 2.0 });
+    const errors2x = await validate(invalid2x);
+    expect(errors2x.length).toBeGreaterThan(0);
 
     const invalidLow = plainToInstance(SetSpeedDto, { speedMultiplier: 0.1 });
     const errorsLow = await validate(invalidLow);

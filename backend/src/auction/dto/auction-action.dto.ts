@@ -24,7 +24,7 @@ export class SetSpeedDto {
   @Type(() => Number)
   @IsNumber({}, { message: 'speedMultiplier must be a valid number' })
   @Min(0.5, { message: 'speedMultiplier must be at least 0.5' })
-  @Max(5.0, { message: 'speedMultiplier cannot exceed 5.0' })
+  @Max(1.5, { message: 'speedMultiplier cannot exceed 1.5 (2x Blitz is completely removed)' })
   speedMultiplier?: number;
 }
 

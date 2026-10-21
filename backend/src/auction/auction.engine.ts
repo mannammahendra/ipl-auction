@@ -1308,15 +1308,14 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
       let nextSpeed: number;
 
       if (targetSpeed !== undefined && targetSpeed > 0) {
-        nextSpeed = targetSpeed;
+        // 2x Blitz completely removed: disallow target speeds >= 2.0x, clamping to max 1.5x
+        nextSpeed = Math.min(1.5, Math.max(1.0, targetSpeed));
       } else {
-        // Cycle: 1.0x -> 1.25x -> 1.5x -> 2.0x -> 1.0x
+        // Cycle: 1.0x -> 1.25x -> 1.5x -> 1.0x (2.0x Blitz completely removed)
         if (currentSpeed < 1.1) {
           nextSpeed = 1.25;
         } else if (currentSpeed < 1.35) {
           nextSpeed = 1.5;
-        } else if (currentSpeed < 1.75) {
-          nextSpeed = 2.0;
         } else {
           nextSpeed = 1.0;
         }
@@ -1352,7 +1351,8 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
   }
 
   getRoomSpeed(roomId: string): number {
-    return this.roomSpeeds.get(roomId) || 1.0;
+    const speed = this.roomSpeeds.get(roomId) || 1.0;
+    return Math.min(1.5, Math.max(1.0, speed)); // Max 1.5x (2x Blitz completely removed)
   }
 
   async handleZeroCountdown(roomId: string, lotId?: string) {

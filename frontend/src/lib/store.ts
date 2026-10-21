@@ -247,10 +247,12 @@ export const useAuctionStore = create<AuctionStore>((set) => ({
   acceleratedNotice: null,
   roundCompletedNotice: null,
 
-  // Auction Speed / Blitz Multiplier
+  // Auction Speed / Blitz Multiplier (2x Blitz completely removed, max 1.5x)
   speedMultiplier: 1.0,
-  setSpeedMultiplier: (speedMultiplier) =>
-    set((state) => (state.speedMultiplier === speedMultiplier ? state : { speedMultiplier })),
+  setSpeedMultiplier: (speedMultiplier) => {
+    const clamped = Math.min(1.5, Math.max(1.0, speedMultiplier || 1.0));
+    set((state) => (state.speedMultiplier === clamped ? state : { speedMultiplier: clamped }));
+  },
 
   // Real-time Chat
   messages: [],
@@ -376,7 +378,7 @@ export const useAuctionStore = create<AuctionStore>((set) => ({
         currentBids: currentBids !== undefined ? currentBids : state.currentBids,
         remainingTimer: timerState ? timerState.remainingSeconds : (room.bidTimerSeconds || 25),
         isTimerPaused: timerState ? timerState.isPaused : room.isPaused,
-        speedMultiplier: timerState?.speedMultiplier || state.speedMultiplier || 1.0,
+        speedMultiplier: Math.min(1.5, Math.max(1.0, timerState?.speedMultiplier || state.speedMultiplier || 1.0)),
         messages: recentMessages !== undefined ? recentMessages : state.messages,
         voiceParticipants: voiceParticipants !== undefined ? voiceParticipants : state.voiceParticipants,
         isAccelerated: (room.currentRound || 1) >= 2 || (room.bidTimerSeconds || 25) <= 15,
