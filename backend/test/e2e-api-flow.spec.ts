@@ -56,6 +56,7 @@ describe('Live API & Auction Engine Integration E2E Flow', () => {
       },
       body: JSON.stringify({
         name: 'Wankhede Test Arena',
+        password: 'e2eSecret123',
         startingPurse: 1200000000, // 120 Cr
         minSquad: 11,
         maxSquad: 18,
@@ -212,7 +213,7 @@ describe('Live API & Auction Engine Integration E2E Flow', () => {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${guestToken}`,
       },
-      body: JSON.stringify({ code: roomCode }),
+      body: JSON.stringify({ code: roomCode, password: 'e2eSecret123' }),
     });
 
     // Try pausing room as non-host -> should be rejected with 400/403

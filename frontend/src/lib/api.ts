@@ -119,7 +119,11 @@ class ApiClient {
 
           const data = await res.json().catch(() => null);
           if (!res.ok) {
-            throw new Error(data?.message || `Request failed with status ${res.status}`);
+            const rawMsg = data?.message;
+            const message = Array.isArray(rawMsg)
+              ? rawMsg[0]
+              : (rawMsg || `Request failed with status ${res.status}`);
+            throw new Error(message);
           }
 
           return data as T;
@@ -168,7 +172,7 @@ class ApiClient {
   rooms = {
     create: (options: {
       name?: string;
-      password?: string;
+      password: string;
       startingPurse?: number;
       squadSize?: number;
       minSquad?: number;

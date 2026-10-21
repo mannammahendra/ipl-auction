@@ -42,6 +42,7 @@ describe('Squad Limit, Overseas Quota & Purse Reserve Boundary Tests', () => {
       },
       body: JSON.stringify({
         name: 'Squad Constraints Arena',
+        password: 'squadSecret123',
         startingPurse: 100000000, // 10 Cr starting purse
         minSquad: 11,
         maxSquad: 18,

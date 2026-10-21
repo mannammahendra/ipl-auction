@@ -98,6 +98,11 @@ function LandingContent() {
     e.preventDefault();
     const finalName = displayName.trim() || `Host_${Math.floor(100 + Math.random() * 900)}`;
 
+    if (!roomPassword || !roomPassword.trim()) {
+      setErrorMessage('Please enter a password to create the auction room.');
+      return;
+    }
+
     const purseCr = Number(startingPurseCr) || 120;
     if (purseCr < 1) {
       setErrorMessage('Starting purse must be at least ₹1 Crore');
@@ -134,7 +139,7 @@ function LandingContent() {
       // 2. Create room with compulsory squad size and max overseas
       const room = await api.rooms.create({
         name: roomName.trim() || undefined,
-        password: roomPassword.trim() || undefined,
+        password: roomPassword.trim(),
         startingPurse: purseCr * 10000000,
         bidTimerSeconds: timer,
         squadSize: squad,
@@ -338,9 +343,13 @@ function LandingContent() {
                   <div className="relative">
                     <input
                       type={showCreatePassword ? 'text' : 'password'}
-                      placeholder="Private room password"
+                      required
+                      placeholder="Enter room password (mandatory)"
                       value={roomPassword}
-                      onChange={(e) => setRoomPassword(e.target.value)}
+                      onChange={(e) => {
+                        setRoomPassword(e.target.value);
+                        if (errorMessage) setErrorMessage(null);
+                      }}
                       className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 pr-9 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
                     />
                     <button

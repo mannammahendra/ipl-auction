@@ -1,14 +1,15 @@
-import { IsString, IsOptional, IsInt, Min, Max } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsString, IsOptional, IsInt, Min, Max, IsNotEmpty } from 'class-validator';
+import { Type, Transform } from 'class-transformer';
 
 export class CreateRoomDto {
   @IsOptional()
   @IsString()
   name?: string;
 
-  @IsOptional()
-  @IsString()
-  password?: string;
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : ''))
+  @IsNotEmpty({ message: 'Please enter a password to create the auction room.' })
+  @IsString({ message: 'Password must be a string' })
+  password: string;
 
   @IsOptional()
   @Type(() => Number)

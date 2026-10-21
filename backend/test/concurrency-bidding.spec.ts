@@ -62,6 +62,7 @@ describe('Concurrency & Rapid Bidding Stress Integration Tests', () => {
       },
       body: JSON.stringify({
         name: 'Stress Testing Arena',
+        password: 'stressSecret123',
         startingPurse: 1000000000, // 100 Cr
         minSquad: 11,
         maxSquad: 18,
@@ -81,12 +82,12 @@ describe('Concurrency & Rapid Bidding Stress Integration Tests', () => {
     await fetch(`${BASE_URL}/api/rooms/join`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${manager1Token}` },
-      body: JSON.stringify({ code: roomCode }),
+      body: JSON.stringify({ code: roomCode, password: 'stressSecret123' }),
     });
     await fetch(`${BASE_URL}/api/rooms/join`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${manager2Token}` },
-      body: JSON.stringify({ code: roomCode }),
+      body: JSON.stringify({ code: roomCode, password: 'stressSecret123' }),
     });
 
     // 6. Select non-overlapping teams
