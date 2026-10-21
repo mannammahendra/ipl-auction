@@ -44,6 +44,8 @@ class AuctioneerVoiceService {
   private lastAnnouncedBidKey: string | null = null;
   private currentPriority: SpeechPriority | null = null;
   private prioritySafetyTimeout: any = null;
+  private isSpeakingActive: boolean = false;
+  private announcedNominationLots = new Set<string>();
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -147,6 +149,7 @@ class AuctioneerVoiceService {
         clearTimeout(this.pendingTimeout);
         this.pendingTimeout = null;
       }
+      this.isSpeakingActive = false;
       this.currentPriority = null;
       if (typeof window !== 'undefined' && window.speechSynthesis) {
         try {
@@ -154,6 +157,10 @@ class AuctioneerVoiceService {
         } catch (e) {}
       }
     }
+  }
+
+  public isSpeaking(): boolean {
+    return this.isSpeakingActive;
   }
 
   public getLastAnnouncedCountdownNumber(): number | null {
@@ -180,6 +187,7 @@ class AuctioneerVoiceService {
       clearTimeout(this.prioritySafetyTimeout);
       this.prioritySafetyTimeout = null;
     }
+    this.isSpeakingActive = false;
     this.currentPriority = null;
     this.resetCountdown();
     this.lastAnnouncedBidKey = null;
@@ -423,15 +431,29 @@ class AuctioneerVoiceService {
   ) {
     if (!this.enabled || typeof window === 'undefined' || !window.speechSynthesis) return;
 
-    // Priority Check: If a higher priority announcement is currently speaking, do not interrupt it
-    if (this.currentPriority) {
-      const activeRank = PRIORITY_ORDER[this.currentPriority];
-      const newRank = PRIORITY_ORDER[priority];
-
-      // Higher priority announcement currently playing: drop incoming lower priority speech
-      if (activeRank > newRank) {
+    // State & Phase Transition Rules:
+    // 1. A new NOMINATION represents a new lot state — it invalidates previous speech (including RESULT from earlier lot)
+    if (priority === 'NOMINATION') {
+      this.currentPriority = 'NOMINATION';
+    } else if (priority === 'RESULT') {
+      // Sale or Unsold result invalidates live bids and countdowns
+      this.currentPriority = 'RESULT';
+    } else if (priority === 'BID') {
+      // Bids cannot override hammer result
+      if (this.currentPriority === 'RESULT') {
         return;
       }
+      this.currentPriority = 'BID';
+    } else if (priority === 'COUNTDOWN') {
+      // Countdown must never interrupt nomination or sale result
+      if (this.currentPriority === 'NOMINATION' || this.currentPriority === 'RESULT') {
+        return;
+      }
+      // If voice is currently actively speaking a countdown number, skip outdated intermediate numbers
+      if (this.currentPriority === 'COUNTDOWN' && (this.isSpeakingActive || (typeof window !== 'undefined' && window.speechSynthesis?.speaking))) {
+        return;
+      }
+      this.currentPriority = 'COUNTDOWN';
     }
 
     if (this.pendingTimeout) {
@@ -450,8 +472,6 @@ class AuctioneerVoiceService {
       }
     } catch (e) {}
 
-    this.currentPriority = priority;
-
     const utterance = new SpeechSynthesisUtterance(text);
     const profile = this.getActiveVoiceProfile();
 
@@ -464,11 +484,15 @@ class AuctioneerVoiceService {
 
     // Retain in memory to prevent Chrome GC bug cutting off utterance
     this.currentUtterance = utterance;
+    this.isSpeakingActive = true;
+
     utterance.onstart = () => {
+      this.isSpeakingActive = true;
       this.pendingText = null;
     };
     utterance.onend = () => {
       this.currentUtterance = null;
+      this.isSpeakingActive = false;
       if (this.prioritySafetyTimeout) {
         clearTimeout(this.prioritySafetyTimeout);
         this.prioritySafetyTimeout = null;
@@ -479,6 +503,7 @@ class AuctioneerVoiceService {
     };
     utterance.onerror = (e) => {
       this.currentUtterance = null;
+      this.isSpeakingActive = false;
       if (this.prioritySafetyTimeout) {
         clearTimeout(this.prioritySafetyTimeout);
         this.prioritySafetyTimeout = null;
@@ -492,15 +517,15 @@ class AuctioneerVoiceService {
     };
 
     // Safety timeout to avoid priority deadlocks if browser never fires onend
-    if (priority === 'NOMINATION' || priority === 'RESULT') {
-      this.prioritySafetyTimeout = setTimeout(() => {
-        if (this.currentPriority === priority) {
-          this.currentPriority = null;
-        }
-      }, 4000);
-    }
+    const safetyMs = priority === 'COUNTDOWN' ? 900 : priority === 'BID' ? 2500 : 3500;
+    this.prioritySafetyTimeout = setTimeout(() => {
+      this.isSpeakingActive = false;
+      if (this.currentPriority === priority) {
+        this.currentPriority = null;
+      }
+    }, safetyMs);
 
-    // Chromium requires a brief micro-delay after cancel() so the audio channel flushes cleanly
+    // Brief delay so audio channel flushes cleanly
     this.pendingTimeout = setTimeout(() => {
       this.pendingTimeout = null;
       if (typeof window !== 'undefined' && window.speechSynthesis && this.enabled) {
@@ -511,15 +536,30 @@ class AuctioneerVoiceService {
           window.speechSynthesis.speak(utterance);
         } catch (e) {}
       }
-    }, 8);
+    }, 10);
   }
 
   // 1. Announce Player Coming to Podium: Full player name & type, natural 1x speaking rate
   // e.g. "Virat Kohli, Batsman." or "Jasprit Bumrah, Bowler."
-  public announceNomination(playerName: string, role?: string) {
+  public announceNomination(playerName: string, role?: string, lotId?: string) {
+    if (!this.enabled) return;
+
+    // Deduplication: Only announce once per genuine nomination lot
+    if (lotId && this.announcedNominationLots.has(lotId)) {
+      return;
+    }
+    if (lotId) {
+      this.announcedNominationLots.add(lotId);
+      if (this.announcedNominationLots.size > 200) {
+        const first = this.announcedNominationLots.values().next().value;
+        if (first) this.announcedNominationLots.delete(first);
+      }
+    }
+
     this.stopCountdown();
     this.lastAnnouncedBidKey = null;
-    this.lastAnnouncedCountdownLotId = null;
+    this.lastAnnouncedCountdownLotId = lotId || null;
+
     const cleanPlayer = playerName && playerName.trim() ? playerName.trim() : 'Player';
     const roles: Record<string, string> = {
       BATSMAN: 'Batsman',
@@ -573,6 +613,12 @@ class AuctioneerVoiceService {
 
     // Drop stale ticks (e.g. delayed out-of-order network ticks that arrive after a lower tick was already announced)
     if (this.lastAnnouncedCountdownNumber !== null && seconds > this.lastAnnouncedCountdownNumber) {
+      return;
+    }
+
+    // If speech cannot finish before countdown advances (e.g. at Blitz speeds):
+    // Skip outdated countdown numbers instead of interrupting or queuing late!
+    if (this.currentPriority === 'COUNTDOWN' && (this.isSpeakingActive || (typeof window !== 'undefined' && window.speechSynthesis?.speaking))) {
       return;
     }
 

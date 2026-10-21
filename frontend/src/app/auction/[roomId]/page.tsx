@@ -138,18 +138,19 @@ export default function LiveAuctionArenaPage() {
           setTimer(roomData.bidTimerSeconds || 25);
         }
 
-        // Immediately vocalize current player if auction already in progress or newly started
+        // Vocalize current player if fresh auction start (no bids yet placed, not reconnecting mid-lot)
         if (
           roomData.status === 'AUCTION_ACTIVE' &&
           roomData.currentAuctionPlayer?.status === 'NOMINATED' &&
-          roomData.currentAuctionPlayer?.player
+          roomData.currentAuctionPlayer?.player &&
+          (!roomData.currentBidAmount || roomData.currentBidAmount === 0)
         ) {
           const cap = roomData.currentAuctionPlayer;
           const canonicalId = cap.id || cap.player.id;
           if (canonicalId && canonicalId !== lastAnnouncedPlayerIdRef.current) {
             lastAnnouncedPlayerIdRef.current = canonicalId;
             setTimeout(() => {
-              auctioneerVoice.announceNomination(cap.player.name, cap.player.role);
+              auctioneerVoice.announceNomination(cap.player.name, cap.player.role, canonicalId);
             }, 300);
           }
         }
@@ -161,20 +162,6 @@ export default function LiveAuctionArenaPage() {
 
         socket.on('room_sync', (data: any) => {
           syncRoomState(data);
-          const cp = data.currentAuctionPlayer || data.room?.currentAuctionPlayer;
-          const canonicalId = cp?.id || cp?.player?.id;
-          // Strictly only announce if the player is actively open for bidding (status === 'NOMINATED')
-          // and has not already been announced in this session
-          if (
-            cp?.status === 'NOMINATED' &&
-            cp?.player &&
-            canonicalId &&
-            canonicalId !== lastAnnouncedPlayerIdRef.current &&
-            (data.room?.status === 'AUCTION_ACTIVE' || roomData.status === 'AUCTION_ACTIVE')
-          ) {
-            lastAnnouncedPlayerIdRef.current = canonicalId;
-            auctioneerVoice.announceNomination(cp.player.name, cp.player.role);
-          }
         });
 
         const zeroFallbackTimeoutRef = { current: null as any };
@@ -245,7 +232,7 @@ export default function LiveAuctionArenaPage() {
           const playerRole = p?.role || ap?.role;
           if (playerName) {
             lastAnnouncedPlayerIdRef.current = canonicalId;
-            auctioneerVoice.announceNomination(playerName, playerRole);
+            auctioneerVoice.announceNomination(playerName, playerRole, canonicalId);
           }
         });
 
@@ -488,7 +475,7 @@ export default function LiveAuctionArenaPage() {
         window.speechSynthesis.cancel();
       }
     };
-  }, [roomId, router, onBidPlaced, onPlayerNominated, onPlayerSold, onPlayerUnsold, setRoom, setTimer, setUser, syncRoomState]);
+  }, [roomId]);
 
   const handleOpenTeamSquad = (team: Team) => {
     setSelectedDrawerTeam(team);
