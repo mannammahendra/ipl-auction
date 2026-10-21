@@ -168,7 +168,7 @@ class ApiClient {
   rooms = {
     create: (options: {
       name?: string;
-      password?: string;
+      password: string;
       startingPurse?: number;
       squadSize?: number;
       minSquad?: number;
