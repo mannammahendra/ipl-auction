@@ -23,7 +23,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: "IPL Mega Auction — Multiplayer Real-Time Bidding Arena",
-  description: "Official interactive real-time IPL Mega Auction platform with live bidding, voice commentary, and squad management.",
+  description: "Official interactive real-time IPL Mega Auction platform with live bidding and squad management.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

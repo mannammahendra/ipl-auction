@@ -1,7 +1,7 @@
 {
   "name": "IPL Mega Auction — Live Multiplayer Arena",
   "short_name": "IPL Auction",
-  "description": "Interactive real-time multiplayer IPL Mega Auction with live bidding, voice commentary, and squad management.",
+  "description": "Interactive real-time multiplayer IPL Mega Auction with live bidding and squad management.",
   "start_url": "/",
   "id": "/",
   "display": "standalone",

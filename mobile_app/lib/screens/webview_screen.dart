@@ -90,7 +90,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
         ),
       );
 
-    // Enable media playback without gesture for auction sound effects & commentary
+    // Enable media playback without gesture for auction sound effects
     if (controller.platform is AndroidWebViewController) {
       final androidController = controller.platform as AndroidWebViewController;
       androidController.setMediaPlaybackRequiresUserGesture(false);

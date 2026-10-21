@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuctionStore, Team, RoomMember } from '../../../lib/store';
 import { api } from '../../../lib/api';
 import { socketService } from '../../../lib/socket';
-import { auctioneerVoice } from '../../../lib/voice';
 import { soundFx } from '../../../lib/audio';
 import { Navbar } from '../../../components/Navbar';
 import { formatRupees } from '../../../lib/formatters';
@@ -49,9 +48,7 @@ export default function LobbyPage() {
   const navigateToArena = useCallback((targetRoomId: string) => {
     if (isNavigatingRef.current) return;
     isNavigatingRef.current = true;
-    try {
-      auctioneerVoice.unlockAudio();
-    } catch {}
+
     router.push(`/auction/${targetRoomId}`);
   }, [router]);
 
@@ -288,8 +285,7 @@ export default function LobbyPage() {
     try {
       // 1. Immediately unlock audio with authentic host tap
       try {
-        auctioneerVoice.unlockAudio();
-        soundFx.playGavel();
+                soundFx.playGavel();
       } catch {}
 
       // 2. Prefetch arena route

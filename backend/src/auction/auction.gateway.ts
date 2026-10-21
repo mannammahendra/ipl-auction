@@ -39,15 +39,7 @@ export class AuctionGateway implements OnGatewayConnection, OnGatewayDisconnect 
     text: string;
     timestamp: number;
   }>>();
-  private voiceParticipants = new Map<string, Map<string, {
-    userId: string;
-    socketId: string;
-    username: string;
-    teamShortName?: string | null;
-    teamColor?: string | null;
-    isMuted: boolean;
-    isSpeaking: boolean;
-  }>>();
+
 
   constructor(
     private readonly jwtService: JwtService,
@@ -90,14 +82,7 @@ export class AuctionGateway implements OnGatewayConnection, OnGatewayDisconnect 
   async handleDisconnect(client: Socket) {
     const session = this.activeSockets.get(client.id);
     if (session && session.roomId) {
-      const roomVoice = this.voiceParticipants.get(session.roomId);
-      if (roomVoice && roomVoice.has(client.id)) {
-        roomVoice.delete(client.id);
-        this.server.to(`room:${session.roomId}`).emit('voice_user_left', {
-          socketId: client.id,
-          userId: session.userId,
-        });
-      }
+
 
       const userRoomKey = `${session.roomId}:${session.userId}`;
       const socketSet = this.userRoomSockets.get(userRoomKey);
@@ -243,8 +228,6 @@ export class AuctionGateway implements OnGatewayConnection, OnGatewayDisconnect 
     }
 
     const timerState = this.auctionEngine.getTimerState(actualRoomId);
-    const roomVoice = this.voiceParticipants.get(actualRoomId);
-    const currentVoiceUsers = roomVoice ? Array.from(roomVoice.values()) : [];
 
     client.emit('room_sync', {
       room,
@@ -252,7 +235,6 @@ export class AuctionGateway implements OnGatewayConnection, OnGatewayDisconnect 
       currentBids,
       timerState,
       recentMessages: this.roomMessages.get(actualRoomId) || [],
-      voiceParticipants: currentVoiceUsers,
       serverTime: Date.now(),
     });
 
@@ -553,98 +535,5 @@ export class AuctionGateway implements OnGatewayConnection, OnGatewayDisconnect 
     this.server.to(`room:${data.roomId}`).emit('new_message', msg);
   }
 
-  @SubscribeMessage('voice_join')
-  async handleVoiceJoin(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() data: { roomId: string },
-  ) {
-    const session = this.activeSockets.get(client.id);
-    if (!session || !data?.roomId) return;
 
-    const member = await this.prisma.roomMember.findUnique({
-      where: { roomId_userId: { roomId: data.roomId, userId: session.userId } },
-      include: {
-        user: { select: { id: true, username: true } },
-        team: { select: { shortName: true, color: true } },
-      },
-    });
-
-    if (!this.voiceParticipants.has(data.roomId)) {
-      this.voiceParticipants.set(data.roomId, new Map());
-    }
-    const roomVoice = this.voiceParticipants.get(data.roomId)!;
-
-    const existingPeers = Array.from(roomVoice.values());
-
-    const newParticipant = {
-      userId: session.userId,
-      socketId: client.id,
-      username: member?.user?.username || 'Manager',
-      teamShortName: member?.team?.shortName,
-      teamColor: member?.team?.color,
-      isMuted: false,
-      isSpeaking: false,
-    };
-
-    roomVoice.set(client.id, newParticipant);
-
-    client.emit('voice_joined', { peers: existingPeers });
-    client.to(`room:${data.roomId}`).emit('voice_user_joined', newParticipant);
-  }
-
-  @SubscribeMessage('voice_leave')
-  async handleVoiceLeave(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() data: { roomId: string },
-  ) {
-    const session = this.activeSockets.get(client.id);
-    if (!session || !data?.roomId) return;
-
-    const roomVoice = this.voiceParticipants.get(data.roomId);
-    if (roomVoice && roomVoice.has(client.id)) {
-      roomVoice.delete(client.id);
-      this.server.to(`room:${data.roomId}`).emit('voice_user_left', {
-        socketId: client.id,
-        userId: session.userId,
-      });
-    }
-  }
-
-  @SubscribeMessage('voice_signal')
-  async handleVoiceSignal(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() data: { toSocketId: string; signal: any },
-  ) {
-    const session = this.activeSockets.get(client.id);
-    if (!session || !data?.toSocketId) return;
-
-    this.server.to(data.toSocketId).emit('voice_signal', {
-      fromSocketId: client.id,
-      signal: data.signal,
-      userId: session.userId,
-    });
-  }
-
-  @SubscribeMessage('voice_state')
-  async handleVoiceState(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() data: { roomId: string; isMuted?: boolean; isSpeaking?: boolean },
-  ) {
-    const session = this.activeSockets.get(client.id);
-    if (!session || !data?.roomId) return;
-
-    const roomVoice = this.voiceParticipants.get(data.roomId);
-    if (roomVoice && roomVoice.has(client.id)) {
-      const p = roomVoice.get(client.id)!;
-      if (typeof data.isMuted === 'boolean') p.isMuted = data.isMuted;
-      if (typeof data.isSpeaking === 'boolean') p.isSpeaking = data.isSpeaking;
-
-      this.server.to(`room:${data.roomId}`).emit('voice_state_changed', {
-        socketId: client.id,
-        userId: session.userId,
-        isMuted: p.isMuted,
-        isSpeaking: p.isSpeaking,
-      });
-    }
-  }
 }
