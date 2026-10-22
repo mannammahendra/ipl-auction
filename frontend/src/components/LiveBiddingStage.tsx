@@ -143,10 +143,21 @@ export function LiveBiddingStage() {
       return;
     }
 
+    const targetBid = amount || nextBid;
     setLocalError(null);
     setIsSubmitting(true);
+
+    // Instant optimistic update (0ms latency, fast as Flash!)
+    useAuctionStore.setState({
+      currentBidAmount: targetBid,
+      currentBidTeamId: effectiveTeam.id,
+      currentBidTeam: effectiveTeam,
+      currentBidderName: user?.username || 'You',
+      remainingTimer: room.bidTimerSeconds || 14,
+    });
+
     socketService.placeBid(room.id, effectiveTeam.id, amount);
-    setTimeout(() => setIsSubmitting(false), 80);
+    setTimeout(() => setIsSubmitting(false), 50);
   };
 
   const handleCustomBid = (e: React.FormEvent) => {

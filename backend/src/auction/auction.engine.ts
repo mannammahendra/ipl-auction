@@ -470,7 +470,8 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
       },
     });
 
-    await this.prisma.auctionAuditLog.create({
+    // Asynchronously record nomination audit log without blocking real-time broadcast
+    this.prisma.auctionAuditLog.create({
       data: {
         roomId,
         action: 'PLAYER_NOMINATED',
@@ -481,7 +482,7 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
           role: updatedAuctionPlayer.player.role,
         }),
       },
-    });
+    }).catch((err) => this.logger.warn(`Async audit log error: ${err?.message}`));
 
     const payload = {
       auctionPlayer: updatedAuctionPlayer,
@@ -646,44 +647,42 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
         );
       }
 
-      const bidCount = await this.prisma.bid.count({
-        where: { roomId, auctionPlayerId: auctionPlayer.id },
-      });
-
-      const bid = await this.prisma.bid.create({
-        data: {
-          roomId,
-          auctionPlayerId: auctionPlayer.id,
-          teamId: team.id,
-          bidderUserId: userId,
-          amount: proposedBid,
-          bidNumber: bidCount + 1,
-        },
-        include: {
-          team: true,
-          bidder: { select: { id: true, username: true } },
-        },
-      });
-
       const activeTimer = this.timers.get(roomId);
       // If a player bids, the timer starts from the starting (timer set by the host)
       const startingTimer = room.bidTimerSeconds || 14;
       const remaining = startingTimer;
       const speed = this.roomSpeeds.get(roomId) || 1.0;
-
       const timerEndsAt = new Date(Date.now() + Math.round((remaining * 1000) / speed));
 
-      await this.prisma.room.update({
-        where: { id: roomId },
-        data: {
-          currentBidAmount: proposedBid,
-          currentBidTeamId: team.id,
-          timerEndsAt,
-          lastBidTime: new Date(),
-        },
-      });
+      // Ultra-fast parallel database execution for immediate bid placement
+      const [bid] = await Promise.all([
+        this.prisma.bid.create({
+          data: {
+            roomId,
+            auctionPlayerId: auctionPlayer.id,
+            teamId: team.id,
+            bidderUserId: userId,
+            amount: proposedBid,
+            bidNumber: (room.currentBidAmount ? 2 : 1),
+          },
+          include: {
+            team: true,
+            bidder: { select: { id: true, username: true } },
+          },
+        }),
+        this.prisma.room.update({
+          where: { id: roomId },
+          data: {
+            currentBidAmount: proposedBid,
+            currentBidTeamId: team.id,
+            timerEndsAt,
+            lastBidTime: new Date(),
+          },
+        }),
+      ]);
 
-      await this.prisma.auctionAuditLog.create({
+      // Fire audit log asynchronously to never delay real-time bid propagation
+      this.prisma.auctionAuditLog.create({
         data: {
           roomId,
           action: 'BID_PLACED',
@@ -694,7 +693,7 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
             bidder: member.user?.username || userId,
           }),
         },
-      });
+      }).catch((err) => this.logger.warn(`Async audit log error: ${err?.message}`));
 
       const broadcastData = {
         bid,
@@ -985,7 +984,7 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
       });
 
       const speed = this.roomSpeeds.get(roomId) || 1.0;
-      const transitionDelayMs = Math.max(1000, Math.round(4000 / speed));
+      const transitionDelayMs = Math.max(500, Math.round(1800 / speed));
 
       if (roomState && !roomState.isPaused && roomState.status === 'AUCTION_ACTIVE') {
         const nextTimeout = setTimeout(async () => {
@@ -1063,7 +1062,7 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
       });
 
       const speed = this.roomSpeeds.get(roomId) || 1.0;
-      const transitionDelayMs = Math.max(800, Math.round(2500 / speed));
+      const transitionDelayMs = Math.max(300, Math.round(1000 / speed));
 
       if (roomState && !roomState.isPaused && roomState.status === 'AUCTION_ACTIVE') {
         const nextTimeout = setTimeout(async () => {
@@ -1168,7 +1167,7 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
       this.logger.log(`Room ${roomId}: Round ${currentRound} complete with ${unsoldPlayers.length} unsold players. Scheduling Accelerated Round.`);
 
       const speed = this.roomSpeeds.get(roomId) || 1.0;
-      const intermissionSeconds = Math.max(3, Math.round(8 / speed));
+      const intermissionSeconds = Math.max(2, Math.round(4 / speed));
 
       this.broadcast('round_completed', roomId, {
         round: currentRound,

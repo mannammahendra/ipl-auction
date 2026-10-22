@@ -61,11 +61,21 @@ export const FloatingAuctionBar: React.FC = React.memo(function FloatingAuctionB
     if (!isEligible || !myTeam || biddingLoading) return;
 
     setBiddingLoading(true);
+
+    // Instant optimistic update (0ms latency, fast as Flash!)
+    useAuctionStore.setState({
+      currentBidAmount: nextBid,
+      currentBidTeamId: myTeam.id,
+      currentBidTeam: myTeam,
+      currentBidderName: user?.username || 'You',
+      remainingTimer: room.bidTimerSeconds || 14,
+    });
+
     socketService.placeBid(room.id, myTeam.id, nextBid);
 
     setTimeout(() => {
       setBiddingLoading(false);
-    }, 400);
+    }, 60);
   };
 
   const scrollToTop = () => {

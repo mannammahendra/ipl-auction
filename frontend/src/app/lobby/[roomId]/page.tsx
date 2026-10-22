@@ -180,8 +180,9 @@ export default function LobbyPage() {
       init();
     }
 
-    // Backup polling heartbeat every 3 seconds to guarantee smooth mobile sync
+    // Backup polling heartbeat only when socket is disconnected
     const pollInterval = setInterval(async () => {
+      if (socketService.getSocket()?.connected) return;
       try {
         const latest = await api.rooms.get(roomId);
         if (latest.status === 'AUCTION_ACTIVE') {

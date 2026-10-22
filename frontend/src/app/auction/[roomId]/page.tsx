@@ -236,7 +236,7 @@ setLoading(false); // Instant render - never leave user staring at a spinner
               if (currentAP && currentAP.status === 'NOMINATED' && currentAP.id === activePlayerId) {
                 socketService.notifyTimerExpired(roomId, activePlayerId);
               }
-            }, 1200);
+            }, 300);
           } else {
             clearZeroFallback();
           }

@@ -88,9 +88,11 @@ export const FranchiseLeaderboard = React.memo(function FranchiseLeaderboard({ o
           const pursePercent = Math.max(0, Math.min(100, (team.currentPurse / room.startingPurse) * 100));
           const isExpanded = expandedTeamId === team.id;
 
-          const teamSoldPlayers = (room.auctionPlayers || []).filter(
-            (ap) => ap.status === 'SOLD' && ap.soldToTeamId === team.id
-          );
+          const teamSoldPlayers = isExpanded
+            ? (room.auctionPlayers || []).filter(
+                (ap) => ap.status === 'SOLD' && ap.soldToTeamId === team.id
+              )
+            : [];
 
           const isFirstUnselected = !isSelected && idx > 0 && selectedTeamIds.size > 0 && (
             sortedTeams[idx - 1].id === myTeamId || selectedTeamIds.has(sortedTeams[idx - 1].id)
