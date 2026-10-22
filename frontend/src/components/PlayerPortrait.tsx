@@ -5,6 +5,7 @@ import { getPlayerPhoto, PLAYER_PHOTOS } from '../lib/playerPhotos';
 
 interface PlayerPortraitProps {
   player?: {
+    id?: string | null;
     name?: string | null;
     image?: string | null;
     role?: string | null;
@@ -13,6 +14,10 @@ interface PlayerPortraitProps {
   imageClassName?: string;
   priority?: boolean;
 }
+
+// Inline SVG neutral silhouette placeholder (offline-resilient, no network dependency)
+const NEUTRAL_SILHOUETTE_DATA_URI =
+  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 120" fill="%23475569"><path d="M50 15a22 22 0 1 0 0 44 22 22 0 0 0 0-44zm0 54c-28 0-45 16-45 36v15h90v-15c0-20-17-36-45-36z"/></svg>';
 
 export function PlayerPortrait({
   player,
@@ -23,6 +28,8 @@ export function PlayerPortrait({
   const photoUrl = getPlayerPhoto(player);
   const [currentSrc, setCurrentSrc] = useState<string>(photoUrl);
   const [hasTriedCurated, setHasTriedCurated] = useState(false);
+  const [hasTriedFallbackAvatar, setHasTriedFallbackAvatar] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   const playerName = player?.name || 'Player';
   const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -33,10 +40,12 @@ export function PlayerPortrait({
   useEffect(() => {
     setCurrentSrc(photoUrl);
     setHasTriedCurated(false);
+    setHasTriedFallbackAvatar(false);
+    setIsLoaded(false);
   }, [player?.name, player?.image, photoUrl]);
 
   const handleImageError = () => {
-    // If external/db image failed, try curated PLAYER_PHOTOS mapping first
+    // 1. If external/db image failed, try curated PLAYER_PHOTOS mapping first
     const curated = player?.name ? PLAYER_PHOTOS[player.name] : null;
     if (curated && !hasTriedCurated && curated !== currentSrc) {
       setHasTriedCurated(true);
@@ -44,8 +53,17 @@ export function PlayerPortrait({
       return;
     }
 
-    // Otherwise fall back to avatar initials
-    setCurrentSrc(fallbackAvatar);
+    // 2. Otherwise try avatar initials
+    if (!hasTriedFallbackAvatar && currentSrc !== fallbackAvatar) {
+      setHasTriedFallbackAvatar(true);
+      setCurrentSrc(fallbackAvatar);
+      return;
+    }
+
+    // 3. Ultimate fail-safe: neutral silhouette SVG (guaranteed never to loop or break)
+    if (currentSrc !== NEUTRAL_SILHOUETTE_DATA_URI) {
+      setCurrentSrc(NEUTRAL_SILHOUETTE_DATA_URI);
+    }
   };
 
   const defaultRounding = className.includes('rounded-') ? '' : 'rounded-2xl';
@@ -58,10 +76,14 @@ export function PlayerPortrait({
         src={currentSrc}
         alt={playerName}
         loading={priority ? 'eager' : 'lazy'}
+        decoding="async"
         referrerPolicy="no-referrer"
         crossOrigin="anonymous"
+        onLoad={() => setIsLoaded(true)}
         onError={handleImageError}
-        className={`w-full h-full object-cover object-[center_top] transition-transform duration-300 hover:scale-105 rounded-[inherit] ${imageClassName}`}
+        className={`w-full h-full object-cover object-[center_top] transition-all duration-300 hover:scale-105 rounded-[inherit] ${
+          isLoaded ? 'opacity-100' : 'opacity-80'
+        } ${imageClassName}`}
       />
     </div>
   );

@@ -2855,7 +2855,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Fast Medium",
     "tier": "CAPPED",
     "basePrice": 7500000,
-    "image": "https://ts2.explicit.bing.net/th?id=OIP.C8dOBWUwzhjombk3cagJYAHaLH&pid=15.1",
+    "image": "https://ts2.mm.bing.net/th?id=OIP.C8dOBWUwzhjombk3cagJYAHaLH&pid=15.1",
     "stats": "{\"ipl\":{\"matches\":48,\"wickets\":58,\"economy\":7.72,\"avg\":21.7,\"bbi\":\"4/18\",\"runs\":120},\"t20\":{\"matches\":31,\"wickets\":37,\"economy\":\"7.32\",\"avg\":\"19.6\",\"bbi\":\"4/12\",\"runs\":62},\"odi\":{\"matches\":38,\"wickets\":55,\"economy\":\"5.52\",\"avg\":\"24.2\",\"bbi\":\"5/27\",\"runs\":152},\"test\":{\"matches\":14,\"wickets\":53,\"economy\":\"3.21\",\"avg\":\"22.9\",\"bbi\":\"6/38\",\"runs\":112}}"
   },
   {
@@ -3971,7 +3971,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Slow Left-arm Orthodox",
     "tier": "CAPPED",
     "basePrice": 5000000,
-    "image": "https://ts1.mm.bing.net/th?id=OIF.5o8TOMeZzQTeOGcw7qS1Kw&pid=15.1",
+    "image": "/players/shahbaz_nadeem.png",
     "stats": "{\"ipl\":{\"matches\":68,\"wickets\":84,\"economy\":7.72,\"avg\":25.2,\"bbi\":\"4/18\",\"runs\":170},\"t20\":{\"matches\":44,\"wickets\":53,\"economy\":\"7.32\",\"avg\":\"23.1\",\"bbi\":\"4/12\",\"runs\":88},\"odi\":{\"matches\":54,\"wickets\":78,\"economy\":\"5.52\",\"avg\":\"27.7\",\"bbi\":\"5/27\",\"runs\":216},\"test\":{\"matches\":12,\"wickets\":46,\"economy\":\"3.39\",\"avg\":\"26.4\",\"bbi\":\"6/38\",\"runs\":96}}"
   },
   {

@@ -126,5 +126,55 @@ describe('Player Image Consistency & Identity Preservation Tests', () => {
       expect(inspectImageUrl).toBe('/players/jasprit_bumrah.png');
     });
   });
+
+  describe('Full 424 Auction Player Pool Image Audit Tests', () => {
+    it('verifies exact count of 424 players in INITIAL_PLAYERS dataset', () => {
+      expect(INITIAL_PLAYERS.length).toBe(424);
+    });
+
+    it('verifies all 424 players have non-empty, non-null image definitions', () => {
+      for (const p of INITIAL_PLAYERS) {
+        expect(p.image).toBeDefined();
+        expect(typeof p.image).toBe('string');
+        expect(p.image.trim().length).toBeGreaterThan(0);
+      }
+    });
+
+    it('verifies zero players use ui-avatars, unsplash, or placeholder keywords in dataset', () => {
+      const banned = ['unsplash', 'ui-avatars', 'placeholder', 'stadium', 'mission', 'coreldraw', 'default'];
+      for (const p of INITIAL_PLAYERS) {
+        for (const b of banned) {
+          expect(p.image.toLowerCase()).not.toContain(b);
+        }
+      }
+    });
+
+    it('verifies zero explicit.bing.net domain URLs in PLAYER_PHOTOS', () => {
+      for (const [name, url] of Object.entries(PLAYER_PHOTOS)) {
+        expect(url).not.toContain('explicit.bing.net');
+      }
+    });
+
+    it('verifies authentic curated headshot for Shahbaz Nadeem resolves to local file', () => {
+      const resolved = getPlayerPhoto({ name: 'Shahbaz Nadeem' });
+      expect(resolved).toBe('/players/shahbaz_nadeem.png');
+    });
+
+    it('verifies all local /players/ references exist on disk and are non-empty', () => {
+      const fs = require('fs');
+      const path = require('path');
+      const publicDir = path.resolve(__dirname, '../../frontend/public/players');
+      const localPlayers = INITIAL_PLAYERS.filter((p) => p.image.startsWith('/players/'));
+      expect(localPlayers.length).toBeGreaterThanOrEqual(60);
+
+      for (const lp of localPlayers) {
+        const filename = lp.image.replace('/players/', '');
+        const fullPath = path.join(publicDir, filename);
+        expect(fs.existsSync(fullPath)).toBe(true);
+        const stats = fs.statSync(fullPath);
+        expect(stats.size).toBeGreaterThan(1000);
+      }
+    });
+  });
 });
 
