@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
 import { useAuctionStore, Team, SquadMember } from '../lib/store';
 import TeamLogo from './TeamLogo';
 import {

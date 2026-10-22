@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAuctionStore, Team } from '../lib/store';
 import { formatRupees } from '../lib/formatters';
 import { Users, Globe, Wallet, ChevronDown, ChevronUp } from 'lucide-react';

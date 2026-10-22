@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAuctionStore } from '../lib/store';
 import TeamLogo from './TeamLogo';
 import {
