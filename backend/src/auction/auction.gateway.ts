@@ -16,6 +16,9 @@ import { RoomsService } from '../rooms/rooms.service.js';
 
 @WebSocketGateway({
   cors: { origin: '*' },
+  transports: ['websocket', 'polling'],
+  perMessageDeflate: false,
+  httpCompression: false,
 })
 export class AuctionGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
@@ -281,7 +284,7 @@ export class AuctionGateway implements OnGatewayConnection, OnGatewayDisconnect 
     // Rate-limit bidding: Max 1 bid per 250ms per user
     const now = Date.now();
     const lastBid = this.lastBidTimePerUser.get(session.userId) || 0;
-    if (now - lastBid < 250) {
+    if (now - lastBid < 120) {
       client.emit('bid_error', { message: 'Bidding too fast. Please wait a moment.' });
       return;
     }

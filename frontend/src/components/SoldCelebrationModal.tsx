@@ -50,7 +50,7 @@ export function SoldCelebrationModal() {
       const timer = setTimeout(() => {
         dismissCelebration();
         setVisible(false);
-      }, 1600);
+      }, 1100);
 
       return () => clearTimeout(timer);
     } else if (unsoldNotice) {
@@ -58,7 +58,7 @@ export function SoldCelebrationModal() {
       const timer = setTimeout(() => {
         dismissCelebration();
         setVisible(false);
-      }, 900);
+      }, 550);
       return () => clearTimeout(timer);
     } else {
       setVisible(false);

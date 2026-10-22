@@ -667,21 +667,53 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
       const remaining = startingTimer;
       const speed = this.roomSpeeds.get(roomId) || 1.0;
       const timerEndsAt = new Date(Date.now() + Math.round((remaining * 1000) / speed));
+      const bidId = randomUUID();
 
-      // Ultra-fast parallel database execution for immediate bid placement
-      const [bid] = await Promise.all([
+      const bidRecord = {
+        id: bidId,
+        roomId,
+        auctionPlayerId: auctionPlayer.id,
+        teamId: team.id,
+        bidderUserId: userId,
+        amount: proposedBid,
+        bidNumber: (room.currentBidAmount ? 2 : 1),
+        createdAt: new Date(),
+        team,
+        bidder: { id: userId, username: member.user?.username || userId },
+      };
+
+      const broadcastData = {
+        bid: bidRecord,
+        team,
+        bidderName: member.user?.username || userId,
+        amount: proposedBid,
+        timerSeconds: remaining,
+        timerEndsAt,
+        serverTime: Date.now(),
+      };
+
+      // Zero-latency instant WebSocket broadcast before awaiting disk I/O
+      this.broadcast('bid_placed', roomId, broadcastData);
+
+      if (activeTimer && activeTimer.isPaused) {
+        activeTimer.remainingSeconds = remaining;
+        activeTimer.totalSeconds = remaining;
+        activeTimer.pauseRemainingMs = remaining * 1000;
+      } else {
+        this.startTimer(roomId, remaining, auctionPlayer.id);
+      }
+
+      // Ultra-fast parallel database execution for immediate bid persistence
+      await Promise.all([
         this.prisma.bid.create({
           data: {
+            id: bidId,
             roomId,
             auctionPlayerId: auctionPlayer.id,
             teamId: team.id,
             bidderUserId: userId,
             amount: proposedBid,
             bidNumber: (room.currentBidAmount ? 2 : 1),
-          },
-          include: {
-            team: true,
-            bidder: { select: { id: true, username: true } },
           },
         }),
         this.prisma.room.update({
@@ -708,26 +740,6 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
           }),
         },
       }).catch((err) => this.logger.warn(`Async audit log error: ${err?.message}`));
-
-      const broadcastData = {
-        bid,
-        team,
-        bidderName: member.user?.username || userId,
-        amount: proposedBid,
-        timerSeconds: remaining,
-        timerEndsAt,
-        serverTime: Date.now(),
-      };
-
-      this.broadcast('bid_placed', roomId, broadcastData);
-
-      if (activeTimer && activeTimer.isPaused) {
-        activeTimer.remainingSeconds = remaining;
-        activeTimer.totalSeconds = remaining;
-        activeTimer.pauseRemainingMs = remaining * 1000;
-      } else {
-        this.startTimer(roomId, remaining, auctionPlayer.id);
-      }
 
       return broadcastData;
     });
@@ -998,7 +1010,7 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
       });
 
       const speed = this.roomSpeeds.get(roomId) || 1.0;
-      const transitionDelayMs = Math.max(500, Math.round(1800 / speed));
+      const transitionDelayMs = Math.max(350, Math.round(1200 / speed));
 
       if (roomState && !roomState.isPaused && roomState.status === 'AUCTION_ACTIVE') {
         const nextTimeout = setTimeout(async () => {
@@ -1076,7 +1088,7 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
       });
 
       const speed = this.roomSpeeds.get(roomId) || 1.0;
-      const transitionDelayMs = Math.max(300, Math.round(1000 / speed));
+      const transitionDelayMs = Math.max(200, Math.round(600 / speed));
 
       if (roomState && !roomState.isPaused && roomState.status === 'AUCTION_ACTIVE') {
         const nextTimeout = setTimeout(async () => {
@@ -1181,7 +1193,7 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
       this.logger.log(`Room ${roomId}: Round ${currentRound} complete with ${unsoldPlayers.length} unsold players. Scheduling Accelerated Round.`);
 
       const speed = this.roomSpeeds.get(roomId) || 1.0;
-      const intermissionSeconds = Math.max(2, Math.round(4 / speed));
+      const intermissionSeconds = Math.max(2, Math.round(3 / speed));
 
       this.broadcast('round_completed', roomId, {
         round: currentRound,
@@ -1247,11 +1259,6 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
         }
       }
 
-      await this.prisma.room.update({
-        where: { id: room.id },
-        data: { isPaused: true },
-      });
-
       const remainingSec = timer ? timer.remainingSeconds : 0;
       this.broadcast('auction_paused', room.id, {
         remainingSeconds: remainingSec,
@@ -1259,6 +1266,11 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
         hostName,
         message: `⏸️ Host (${hostName}) paused the auction`,
         serverTime: Date.now(),
+      });
+
+      await this.prisma.room.update({
+        where: { id: room.id },
+        data: { isPaused: true },
       });
 
       return { paused: true, remainingSeconds: remainingSec, hostName };
@@ -1270,11 +1282,6 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
       const room = await this.verifyHost(roomId, hostUserId);
       const hostMember = room.members?.find((m) => m.userId === hostUserId);
       const hostName = hostMember?.user?.username || 'Host';
-
-      await this.prisma.room.update({
-        where: { id: room.id },
-        data: { isPaused: false },
-      });
 
       const timer = this.timers.get(room.id);
       let wasTransitioning = false;
@@ -1295,6 +1302,11 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
         hostName,
         message: `▶️ Host (${hostName}) resumed the auction`,
         serverTime: Date.now(),
+      });
+
+      await this.prisma.room.update({
+        where: { id: room.id },
+        data: { isPaused: false },
       });
 
       if (wasTransitioning) {

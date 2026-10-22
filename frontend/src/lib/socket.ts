@@ -33,10 +33,11 @@ class SocketService {
     this.currentToken = token;
     this.socket = io(getSocketUrl(), {
       auth: { token },
-      transports: ['websocket', 'polling'],
+      transports: ['websocket'],
+      upgrade: false,
       reconnection: true,
       reconnectionAttempts: 15,
-      reconnectionDelay: 1000,
+      reconnectionDelay: 500,
     });
 
     this.socket.on('connect', () => {
