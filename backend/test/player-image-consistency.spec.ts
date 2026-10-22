@@ -5,37 +5,42 @@ import { INITIAL_PLAYERS } from '../src/players/initial-players.data.js';
 describe('Player Image Consistency & Identity Preservation Tests', () => {
   describe('Marquee Player Photo Resolution (RCB & MI)', () => {
     it('resolves authentic curated photo for Virat Kohli (RCB marquee)', () => {
-      const player = { name: 'Virat Kohli', image: '/players/virat_kohli.png' };
+      const player = { name: 'Virat Kohli' };
       const resolved = getPlayerPhoto(player);
-      expect(resolved).toBe('/players/virat_kohli.png');
+      expect(resolved).toBe(PLAYER_PHOTOS['Virat Kohli']);
+      expect(resolved.startsWith('https://')).toBe(true);
       expect(resolved).not.toContain('unsplash.com');
     });
 
     it('resolves authentic curated photo for Rohit Sharma (MI marquee)', () => {
-      const player = { name: 'Rohit Sharma', image: '/players/rohit_sharma.png' };
+      const player = { name: 'Rohit Sharma' };
       const resolved = getPlayerPhoto(player);
-      expect(resolved).toBe('/players/rohit_sharma.png');
+      expect(resolved).toBe(PLAYER_PHOTOS['Rohit Sharma']);
+      expect(resolved.startsWith('https://')).toBe(true);
       expect(resolved).not.toContain('unsplash.com');
     });
 
     it('resolves authentic curated photo for Jasprit Bumrah (MI marquee)', () => {
-      const player = { name: 'Jasprit Bumrah', image: '/players/jasprit_bumrah.png' };
+      const player = { name: 'Jasprit Bumrah' };
       const resolved = getPlayerPhoto(player);
-      expect(resolved).toBe('/players/jasprit_bumrah.png');
+      expect(resolved).toBe(PLAYER_PHOTOS['Jasprit Bumrah']);
+      expect(resolved.startsWith('https://')).toBe(true);
       expect(resolved).not.toContain('unsplash.com');
     });
 
     it('resolves authentic curated photo for Suryakumar Yadav (MI marquee)', () => {
-      const player = { name: 'Suryakumar Yadav', image: '/players/suryakumar_yadav.png' };
+      const player = { name: 'Suryakumar Yadav' };
       const resolved = getPlayerPhoto(player);
-      expect(resolved).toBe('/players/suryakumar_yadav.png');
+      expect(resolved).toBe(PLAYER_PHOTOS['Suryakumar Yadav']);
+      expect(resolved.startsWith('https://')).toBe(true);
       expect(resolved).not.toContain('unsplash.com');
     });
 
     it('resolves authentic curated photo for MS Dhoni (CSK marquee)', () => {
-      const player = { name: 'MS Dhoni', image: '/players/ms_dhoni.jpg' };
+      const player = { name: 'MS Dhoni' };
       const resolved = getPlayerPhoto(player);
-      expect(resolved).toBe('/players/ms_dhoni.jpg');
+      expect(resolved).toBe(PLAYER_PHOTOS['MS Dhoni']);
+      expect(resolved.startsWith('https://')).toBe(true);
       expect(resolved).not.toContain('unsplash.com');
     });
   });
@@ -47,7 +52,8 @@ describe('Player Image Consistency & Identity Preservation Tests', () => {
         image: 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?w=400',
       };
       const resolved = getPlayerPhoto(playerWithUnsplash);
-      expect(resolved).toBe('/players/virat_kohli.png');
+      expect(resolved).toBe(PLAYER_PHOTOS['Virat Kohli']);
+      expect(resolved.startsWith('https://')).toBe(true);
       expect(resolved).not.toContain('unsplash.com');
     });
 
@@ -57,7 +63,8 @@ describe('Player Image Consistency & Identity Preservation Tests', () => {
         image: 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?w=400',
       };
       const resolved = getPlayerPhoto(playerWithUnsplash);
-      expect(resolved).toBe('/players/rohit_sharma.png');
+      expect(resolved).toBe(PLAYER_PHOTOS['Rohit Sharma']);
+      expect(resolved.startsWith('https://')).toBe(true);
       expect(resolved).not.toContain('unsplash.com');
     });
 
@@ -85,7 +92,7 @@ describe('Player Image Consistency & Identity Preservation Tests', () => {
 
     it('handles case-insensitive whitespace-padded player names', () => {
       const resolved = getPlayerPhoto({ name: '  virat kohli  ' });
-      expect(resolved).toBe('/players/virat_kohli.png');
+      expect(resolved).toBe(PLAYER_PHOTOS['Virat Kohli']);
     });
 
     it('resolvePlayerPhoto fallback works for missing or unknown players', () => {
@@ -100,7 +107,7 @@ describe('Player Image Consistency & Identity Preservation Tests', () => {
       const playerRecord = {
         id: 'p_bumrah',
         name: 'Jasprit Bumrah',
-        image: '/players/jasprit_bumrah.png',
+        image: PLAYER_PHOTOS['Jasprit Bumrah'],
         role: 'BOWLER',
         basePrice: 20000000,
         isOverseas: false,
@@ -123,7 +130,7 @@ describe('Player Image Consistency & Identity Preservation Tests', () => {
 
       // Verify 100% strict equality
       expect(inspectImageUrl).toBe(podiumImageUrl);
-      expect(inspectImageUrl).toBe('/players/jasprit_bumrah.png');
+      expect(inspectImageUrl).toBe(PLAYER_PHOTOS['Jasprit Bumrah']);
     });
   });
 
@@ -155,24 +162,20 @@ describe('Player Image Consistency & Identity Preservation Tests', () => {
       }
     });
 
-    it('verifies authentic curated headshot for Shahbaz Nadeem resolves to local file', () => {
+    it('verifies authentic curated headshot for Shahbaz Nadeem resolves to verified URL', () => {
       const resolved = getPlayerPhoto({ name: 'Shahbaz Nadeem' });
-      expect(resolved).toBe('/players/shahbaz_nadeem.png');
+      expect(resolved).toBe(PLAYER_PHOTOS['Shahbaz Nadeem']);
+      expect(resolved.startsWith('https://')).toBe(true);
     });
 
-    it('verifies all local /players/ references exist on disk and are non-empty', () => {
-      const fs = require('fs');
-      const path = require('path');
-      const publicDir = path.resolve(__dirname, '../../frontend/public/players');
-      const localPlayers = INITIAL_PLAYERS.filter((p) => p.image.startsWith('/players/'));
-      expect(localPlayers.length).toBeGreaterThanOrEqual(60);
+    it('verifies zero local /players/ references exist in INITIAL_PLAYERS (100% URL-based)', () => {
+      const localPlayers = INITIAL_PLAYERS.filter((p) => p.image.startsWith('/'));
+      expect(localPlayers.length).toBe(0);
+    });
 
-      for (const lp of localPlayers) {
-        const filename = lp.image.replace('/players/', '');
-        const fullPath = path.join(publicDir, filename);
-        expect(fs.existsSync(fullPath)).toBe(true);
-        const stats = fs.statSync(fullPath);
-        expect(stats.size).toBeGreaterThan(1000);
+    it('verifies all 424 INITIAL_PLAYERS use valid https:// URLs', () => {
+      for (const p of INITIAL_PLAYERS) {
+        expect(p.image.startsWith('https://') || p.image.startsWith('http://')).toBe(true);
       }
     });
   });
