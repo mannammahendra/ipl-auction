@@ -35,7 +35,33 @@ export function SquadInspectionDrawer({
 }: SquadInspectionDrawerProps) {
   const { room, user } = useAuctionStore();
 
-  const teams = room?.teams || [];
+  const myMember = room?.members?.find((m) => m.userId === user?.id);
+  const myTeamId = myMember?.teamId;
+  const selectedTeamIds = useMemo(() => {
+    return new Set(
+      (room?.members || [])
+        .map((m) => m.teamId)
+        .filter((id): id is string => Boolean(id))
+    );
+  }, [room?.members]);
+
+  const teams = useMemo(() => {
+    if (!room?.teams) return [];
+    return [...room.teams].sort((a, b) => {
+      const aIsMyTeam = a.id === myTeamId;
+      const bIsMyTeam = b.id === myTeamId;
+      if (aIsMyTeam && !bIsMyTeam) return -1;
+      if (!aIsMyTeam && bIsMyTeam) return 1;
+
+      const aIsSelected = selectedTeamIds.has(a.id);
+      const bIsSelected = selectedTeamIds.has(b.id);
+      if (aIsSelected && !bIsSelected) return -1;
+      if (!aIsSelected && bIsSelected) return 1;
+
+      return b.currentPurse - a.currentPurse;
+    });
+  }, [room?.teams, myTeamId, selectedTeamIds]);
+
   const auctionPlayers = room?.auctionPlayers || [];
 
   const [selectedTeamId, setSelectedTeamId] = useState<string>('');

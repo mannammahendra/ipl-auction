@@ -380,6 +380,23 @@ export default function LobbyPage() {
   const myMember = room.members?.find((m) => m.userId === user?.id);
   const myTeamId = myMember?.teamId;
 
+  const sortedLobbyTeams = useMemo(() => {
+    if (!room?.teams) return [];
+    return [...room.teams].sort((a, b) => {
+      const aSelectedByMe = a.id === myTeamId;
+      const bSelectedByMe = b.id === myTeamId;
+      if (aSelectedByMe && !bSelectedByMe) return -1;
+      if (!aSelectedByMe && bSelectedByMe) return 1;
+
+      const aClaimed = room.members?.some((m: RoomMember) => m.teamId === a.id);
+      const bClaimed = room.members?.some((m: RoomMember) => m.teamId === b.id);
+      if (aClaimed && !bClaimed) return -1;
+      if (!aClaimed && bClaimed) return 1;
+
+      return a.name.localeCompare(b.name);
+    });
+  }, [room?.teams, myTeamId, room?.members]);
+
   return (
     <div className="min-h-screen text-slate-100 flex flex-col">
       <Navbar />
@@ -557,7 +574,7 @@ export default function LobbyPage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {room.teams?.map((team: Team) => {
+              {sortedLobbyTeams.map((team: Team) => {
                 const isSelectedByMe = team.id === myTeamId;
                 const claimedMember = room.members?.find((m: RoomMember) => m.teamId === team.id);
                 const isClaimedByOther = claimedMember && claimedMember.userId !== user?.id;

@@ -16,14 +16,45 @@ export const FranchiseLeaderboard = React.memo(function FranchiseLeaderboard({ o
   const user = useAuctionStore((s) => s.user);
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null);
 
+  const myMember = room?.members?.find((m) => m.userId === user?.id);
+  const myTeamId = myMember?.teamId;
+
+  // Track all team IDs claimed by players in the room
+  const selectedTeamIds = React.useMemo(() => {
+    return new Set(
+      (room?.members || [])
+        .map((m) => m.teamId)
+        .filter((id): id is string => Boolean(id))
+    );
+  }, [room?.members]);
+
   const sortedTeams = React.useMemo(() => {
     if (!room?.teams) return [];
-    return [...room.teams].sort((a, b) => b.currentPurse - a.currentPurse);
-  }, [room?.teams]);
+
+    return [...room.teams].sort((a, b) => {
+      const aIsMyTeam = a.id === myTeamId;
+      const bIsMyTeam = b.id === myTeamId;
+
+      // 1. My chosen franchise is always pinned to the very top
+      if (aIsMyTeam && !bIsMyTeam) return -1;
+      if (!aIsMyTeam && bIsMyTeam) return 1;
+
+      const aIsSelected = selectedTeamIds.has(a.id);
+      const bIsSelected = selectedTeamIds.has(b.id);
+
+      // 2. Selected/claimed franchises come first, unselected ones go below
+      if (aIsSelected && !bIsSelected) return -1;
+      if (!aIsSelected && bIsSelected) return 1;
+
+      // 3. Within the same group, sort by remaining purse descending, then by name
+      if (b.currentPurse !== a.currentPurse) {
+        return b.currentPurse - a.currentPurse;
+      }
+      return a.name.localeCompare(b.name);
+    });
+  }, [room?.teams, selectedTeamIds, myTeamId]);
 
   if (!room || !room.teams) return null;
-
-  const myMember = room.members?.find((m) => m.userId === user?.id);
 
   const toggleTeam = (teamId: string) => {
     setExpandedTeamId((prev) => (prev === teamId ? null : teamId));
@@ -49,8 +80,11 @@ export const FranchiseLeaderboard = React.memo(function FranchiseLeaderboard({ o
       </div>
 
       <div className="space-y-2">
-        {sortedTeams.map((team) => {
+        {sortedTeams.map((team, idx) => {
           const isMyTeam = team.id === myMember?.teamId;
+          const claimedMember = room.members?.find((m) => m.teamId === team.id);
+          const isClaimedByOther = claimedMember && claimedMember.userId !== user?.id;
+          const isSelected = isMyTeam || Boolean(claimedMember);
           const pursePercent = Math.max(0, Math.min(100, (team.currentPurse / room.startingPurse) * 100));
           const isExpanded = expandedTeamId === team.id;
 
@@ -58,31 +92,51 @@ export const FranchiseLeaderboard = React.memo(function FranchiseLeaderboard({ o
             (ap) => ap.status === 'SOLD' && ap.soldToTeamId === team.id
           );
 
+          const isFirstUnselected = !isSelected && idx > 0 && selectedTeamIds.size > 0 && (
+            sortedTeams[idx - 1].id === myTeamId || selectedTeamIds.has(sortedTeams[idx - 1].id)
+          );
+
           return (
-            <div
-              key={team.id}
-              className={`rounded-xl border transition-all ${
-                isMyTeam
-                  ? 'bg-slate-800/90 border-amber-500/50 shadow-md ring-1 ring-amber-500/30'
-                  : 'bg-slate-950/40 border-slate-800/80 hover:border-slate-700'
-              }`}
-            >
-              {/* Clickable Team Summary Row */}
+            <React.Fragment key={team.id}>
+              {isFirstUnselected && (
+                <div className="flex items-center gap-2 pt-2 pb-0.5 px-1">
+                  <div className="h-px flex-1 bg-slate-800" />
+                  <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500">
+                    Unselected Franchises
+                  </span>
+                  <div className="h-px flex-1 bg-slate-800" />
+                </div>
+              )}
               <div
-                onClick={() => toggleTeam(team.id)}
-                className="py-1.5 px-3 cursor-pointer select-none flex items-center justify-between gap-2.5"
+                className={`rounded-xl border transition-all ${
+                  isMyTeam
+                    ? 'bg-slate-800/90 border-amber-500/50 shadow-md ring-1 ring-amber-500/30'
+                    : isClaimedByOther
+                    ? 'bg-slate-900/90 border-indigo-500/40 shadow-sm'
+                    : 'bg-slate-950/40 border-slate-800/80 hover:border-slate-700'
+                }`}
               >
-                <div className="flex items-center gap-2 min-w-0">
-                  <TeamLogo logo={team.logo} name={team.name} shortName={team.shortName} size="xs" />
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs font-bold text-slate-200">{team.shortName}</span>
-                      {isMyTeam && (
-                        <span className="text-[8px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
-                          YOU
-                        </span>
-                      )}
-                    </div>
+                {/* Clickable Team Summary Row */}
+                <div
+                  onClick={() => toggleTeam(team.id)}
+                  className="py-1.5 px-3 cursor-pointer select-none flex items-center justify-between gap-2.5"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <TeamLogo logo={team.logo} name={team.name} shortName={team.shortName} size="xs" />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs font-bold text-slate-200">{team.shortName}</span>
+                        {isMyTeam && (
+                          <span className="text-[8px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
+                            YOU
+                          </span>
+                        )}
+                        {isClaimedByOther && claimedMember && (
+                          <span className="text-[8px] font-bold px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 shrink-0 truncate max-w-[100px]" title={`Managed by ${claimedMember.user?.username || 'Player'}`}>
+                            👤 {claimedMember.user?.username || 'PLAYER'}
+                          </span>
+                        )}
+                      </div>
                     <span className="text-[9px] text-slate-400 block truncate max-w-[130px] sm:max-w-none">
                       {team.name}
                     </span>
@@ -190,8 +244,9 @@ export const FranchiseLeaderboard = React.memo(function FranchiseLeaderboard({ o
                 </div>
               )}
             </div>
-          );
-        })}
+          </React.Fragment>
+        );
+      })}
       </div>
     </div>
   );

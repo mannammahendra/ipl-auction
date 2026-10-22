@@ -57,12 +57,37 @@ export const PurseRadarModal: React.FC<PurseRadarModalProps> = ({ isOpen, onClos
 
   const myMember = room.members?.find((m) => m.userId === user?.id);
   const myTeam = room.teams?.find((t) => t.id === myMember?.teamId);
+  const myTeamId = myMember?.teamId;
 
-  const activeTeamId = selectedTeamId || myTeam?.id || room.teams[0]?.id;
-  const activeTeam = room.teams.find((t) => t.id === activeTeamId) || room.teams[0];
+  const selectedTeamIds = useMemo(() => {
+    return new Set(
+      (room.members || [])
+        .map((m) => m.teamId)
+        .filter((id): id is string => Boolean(id))
+    );
+  }, [room.members]);
+
+  const sortedRoomTeams = useMemo(() => {
+    return [...(room.teams || [])].sort((a, b) => {
+      const aIsMyTeam = a.id === myTeamId;
+      const bIsMyTeam = b.id === myTeamId;
+      if (aIsMyTeam && !bIsMyTeam) return -1;
+      if (!aIsMyTeam && bIsMyTeam) return 1;
+
+      const aIsSelected = selectedTeamIds.has(a.id);
+      const bIsSelected = selectedTeamIds.has(b.id);
+      if (aIsSelected && !bIsSelected) return -1;
+      if (!aIsSelected && bIsSelected) return 1;
+
+      return b.currentPurse - a.currentPurse;
+    });
+  }, [room.teams, myTeamId, selectedTeamIds]);
+
+  const activeTeamId = selectedTeamId || myTeam?.id || sortedRoomTeams[0]?.id;
+  const activeTeam = sortedRoomTeams.find((t) => t.id === activeTeamId) || sortedRoomTeams[0] || room.teams[0];
 
   // Calculate team stats
-  const teamsStats = (room.teams || []).map((t) => {
+  const teamsStats = sortedRoomTeams.map((t) => {
     const squadCount = t.squad?.length || t.totalPlayers || 0;
     const remainingToMin = Math.max(0, minSquad - squadCount);
     const maxSafeBid = calculateMaxSafeBid(t.currentPurse, squadCount, minSquad, minBasePrice);
