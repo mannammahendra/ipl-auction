@@ -427,7 +427,7 @@ export const PLAYER_PHOTOS: Record<string, string> = {
   "Yuvraj Singh": "https://ts4.mm.bing.net/th?id=OIP.CPA1j7-yHVPsbg8vJFxbqgHaKL&pid=15.1",
   "Yuzvendra Chahal": "https://ts1.mm.bing.net/th?id=OIP.1RvP9UBxAtqllpnYglneqQHaHa&pid=15.1",
   "Zaheer Khan": "https://ts1.mm.bing.net/th?id=OIP.7ilY_xlrZZTx-ij5mx4B7QHaEK&pid=15.1",
-  "Zeeshan Ansari": "https://ts4.mm.bing.net/th?id=OIP.Y-cs2X_14761VgzGivm5rwAAAA&pid=15.1",
+  "Zeeshan Ansari": "/players/zeeshan_ansari.png",
 };
 
 export function getPlayerPhoto(player: { name?: string | null; image?: string | null } | null | undefined): string {

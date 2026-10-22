@@ -5039,7 +5039,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Legbreak googly",
     "tier": "UNCAPPED",
     "basePrice": 3000000,
-    "image": "https://ts4.mm.bing.net/th?id=OIP.Y-cs2X_14761VgzGivm5rwAAAA&pid=15.1",
+    "image": "/players/zeeshan_ansari.png",
     "stats": "{\"ipl\":{\"matches\":14,\"wickets\":19,\"economy\":7.44,\"avg\":24.9,\"bbi\":\"4/18\",\"runs\":35},\"t20\":{\"matches\":9,\"wickets\":11,\"economy\":\"7.04\",\"avg\":\"22.8\",\"bbi\":\"4/12\",\"runs\":18},\"odi\":{\"matches\":4,\"wickets\":6,\"economy\":\"5.24\",\"avg\":\"27.4\",\"bbi\":\"5/27\",\"runs\":16},\"test\":{\"matches\":0,\"wickets\":0,\"economy\":\"3.09\",\"avg\":\"26.1\",\"bbi\":\"6/38\",\"runs\":0}}"
   },
   {

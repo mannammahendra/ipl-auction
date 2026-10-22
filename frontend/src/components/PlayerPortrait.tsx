@@ -78,7 +78,6 @@ export function PlayerPortrait({
         loading={priority ? 'eager' : 'lazy'}
         decoding="async"
         referrerPolicy="no-referrer"
-        crossOrigin="anonymous"
         onLoad={() => setIsLoaded(true)}
         onError={handleImageError}
         className={`w-full h-full object-cover object-[center_top] transition-all duration-300 hover:scale-105 rounded-[inherit] ${
