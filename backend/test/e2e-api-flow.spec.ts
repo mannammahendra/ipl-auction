@@ -8,7 +8,6 @@ describe('Live API & Auction Engine Integration E2E Flow', () => {
   let roomId = '';
   let roomCode = '';
   let firstTeamId = '';
-  let nominatedPlayerId = '';
 
   let isServerRunning = false;
 
@@ -135,7 +134,6 @@ describe('Live API & Auction Engine Integration E2E Flow', () => {
     const roomData = await roomRes.json();
     expect(roomData.status).toBe('AUCTION_ACTIVE');
     expect(roomData.currentAuctionPlayerId).toBeDefined();
-    nominatedPlayerId = roomData.currentAuctionPlayerId;
   });
 
   it('Step 6: Host pauses the auction', async () => {

@@ -88,7 +88,7 @@ describe('Long-Session Resilience & Deadlock Prevention Suite', () => {
         try {
           const release = await mutex.acquire(20);
           release();
-        } catch (err: any) {
+        } catch {
           executionOrder.push('timed_out');
         }
       };

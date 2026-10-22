@@ -11,8 +11,6 @@ import { PlayerPortrait } from './PlayerPortrait';
 export function SoldCelebrationModal() {
   const { soldCelebration, unsoldNotice, dismissCelebration, currentAuctionPlayer } = useAuctionStore();
   const [visible, setVisible] = useState(false);
-  const [soldImgError, setSoldImgError] = useState(false);
-  const [unsoldImgError, setUnsoldImgError] = useState(false);
 
   // Auto-dismiss celebration immediately when a new player is nominated
   useEffect(() => {
@@ -23,8 +21,6 @@ export function SoldCelebrationModal() {
   }, [currentAuctionPlayer?.id, currentAuctionPlayer?.status, dismissCelebration]);
 
   useEffect(() => {
-    setSoldImgError(false);
-    setUnsoldImgError(false);
 
     if (soldCelebration) {
       setVisible(true);
@@ -72,9 +68,6 @@ export function SoldCelebrationModal() {
   // 1. UNSOLD MODAL DISPLAY (With Player Picture)
   if (unsoldNotice) {
     const { player } = unsoldNotice;
-    const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-      player.name
-    )}&background=1e293b&color=94a3b8&size=256&bold=true`;
 
     return (
       <div
@@ -168,9 +161,6 @@ export function SoldCelebrationModal() {
   if (soldCelebration) {
     const { player, team, amount } = soldCelebration;
     const teamAccentColor = team.color || '#f59e0b';
-    const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-      player.name
-    )}&background=1e293b&color=f59e0b&size=256&bold=true`;
 
     return (
       <div

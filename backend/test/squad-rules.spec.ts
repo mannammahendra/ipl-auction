@@ -6,7 +6,6 @@ describe('Squad Limit, Overseas Quota & Purse Reserve Boundary Tests', () => {
   let hostToken = '';
   let roomId = '';
   let teamId = '';
-  let hostUserId = '';
 
   let isServerRunning = false;
 
@@ -31,7 +30,6 @@ describe('Squad Limit, Overseas Quota & Purse Reserve Boundary Tests', () => {
     });
     const authData = await authRes.json();
     hostToken = authData.token;
-    hostUserId = authData.user.id;
 
     // 2. Create Room with a restricted purse (10 Cr), minSquad: 11, maxSquad: 18, maxOverseas: 2
     const roomRes = await fetch(`${BASE_URL}/api/rooms`, {

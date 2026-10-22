@@ -63,7 +63,6 @@ export default function LiveAuctionArenaPage() {
   const onPlayerUnsold = useAuctionStore((s) => s.onPlayerUnsold);
   const acceleratedNotice = useAuctionStore((s) => s.acceleratedNotice);
   const roundCompletedNotice = useAuctionStore((s) => s.roundCompletedNotice);
-  const isAccelerated = useAuctionStore((s) => s.isAccelerated);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -874,7 +873,7 @@ setLoading(false); // Instant render - never leave user staring at a spinner
 
         {/* 3) BOTTOM SECTION: Franchise Purses and Squads */}
         <div className="mb-3.5">
-          <FranchiseLeaderboard />
+          <FranchiseLeaderboard onSelectTeam={handleOpenTeamSquad} />
         </div>
       </main>
 

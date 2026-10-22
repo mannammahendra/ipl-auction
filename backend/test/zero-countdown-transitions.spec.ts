@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 describe('Zero Countdown & Blitz Speed Transition Integrity Suite', () => {
   // Test speed configurations required by specification
@@ -168,7 +168,6 @@ describe('Zero Countdown & Blitz Speed Transition Integrity Suite', () => {
       const now = 1700000012500;
       // An unscaled timerEndsAt that was 12.5 seconds in future during 2.0x blitz
       const unscaledEndsAt = now + 12500;
-      const speed = 2.0;
 
       // Old buggy logic: compared unscaled endsAt to now + 500, restarting timer with 6s, 4s, 3s
       const buggyRemainingSec = Math.max(1, Math.ceil((unscaledEndsAt - now) / 1000));
@@ -256,7 +255,7 @@ describe('Zero Countdown & Blitz Speed Transition Integrity Suite', () => {
         client_spectator: [],
       };
 
-      function broadcast(event: string, payload: any) {
+      function broadcast(event: string, _payload?: any) {
         Object.keys(clientEvents).forEach((clientId) => {
           clientEvents[clientId].push(event);
         });

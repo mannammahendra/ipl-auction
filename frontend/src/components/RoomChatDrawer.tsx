@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuctionStore } from '../lib/store';
 import { socketService } from '../lib/socket';
-import TeamLogo from './TeamLogo';
 import {
   MessageSquare,
   X,

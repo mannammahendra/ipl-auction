@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState, useMemo } from 'react';
+import React, { useRef, useState } from 'react';
 import { useAuctionStore, Team, SquadMember } from '../lib/store';
 import TeamLogo from './TeamLogo';
 import {
@@ -12,7 +12,6 @@ import {
   Trophy,
 } from 'lucide-react';
 import { formatRupeesCompact } from './PurseRadarModal';
-import { getPlayerPhoto } from '../lib/playerPhotos';
 import { PlayerPortrait } from './PlayerPortrait';
 
 interface SquadPosterModalProps {
@@ -376,9 +375,6 @@ export const SquadPosterModal: React.FC<SquadPosterModalProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                   {squad.map((member, idx) => {
                     const p = member.player;
-                    const fallbackImg = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                      p?.name || 'Player'
-                    )}&background=1e293b&color=f59e0b&size=128&bold=true`;
 
                     return (
                       <div

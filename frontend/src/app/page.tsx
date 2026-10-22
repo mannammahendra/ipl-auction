@@ -28,10 +28,10 @@ function LandingContent() {
 
   // Create Room fields
   const [roomName, setRoomName] = useState('');
-  const [startingPurseCr, setStartingPurseCr] = useState<number>(120);
-  const [bidTimerSec, setBidTimerSec] = useState<number>(14);
-  const [targetSquadSize, setTargetSquadSize] = useState<number>(11);
-  const [maxOverseas, setMaxOverseas] = useState<number>(4);
+  const startingPurseCr = 120;
+  const bidTimerSec = 14;
+  const targetSquadSize = 11;
+  const maxOverseas = 4;
 
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState<string | null>(null);

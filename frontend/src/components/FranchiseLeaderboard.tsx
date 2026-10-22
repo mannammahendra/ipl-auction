@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { useAuctionStore, Team } from '../lib/store';
 import { formatRupees } from '../lib/formatters';
 import { Users, Globe, Wallet, ChevronDown, ChevronUp } from 'lucide-react';
@@ -120,7 +120,7 @@ export const FranchiseLeaderboard = React.memo(function FranchiseLeaderboard({ o
               >
                 {/* Clickable Team Summary Row */}
                 <div
-                  onClick={() => toggleTeam(team.id)}
+                  onClick={() => { toggleTeam(team.id); onSelectTeam?.(team); }}
                   className="py-1.5 px-3 cursor-pointer select-none flex items-center justify-between gap-2.5"
                 >
                   <div className="flex items-center gap-2 min-w-0">

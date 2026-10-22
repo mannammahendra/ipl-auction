@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuctionStore } from '../lib/store';
 import { socketService } from '../lib/socket';
 import { api } from '../lib/api';
@@ -51,7 +51,7 @@ export function LiveBiddingStage() {
       const updatedRoom = await api.rooms.selectTeam(room.id, teamId);
       setRoom(updatedRoom);
       setLocalError(null);
-    } catch (err: any) {
+    } catch {
       setLocalError(err.message || 'Failed to claim franchise');
       setTimeout(() => setLocalError(null), 3500);
     } finally {
@@ -117,7 +117,7 @@ export function LiveBiddingStage() {
           const updatedRoom = await api.rooms.selectTeam(room.id, firstAvailable.id);
           setRoom(updatedRoom);
           effectiveTeam = updatedRoom.teams?.find((t: any) => t.id === firstAvailable.id);
-        } catch (err: any) {
+        } catch {
           setLocalError('Please claim a franchise to place bids');
           setTimeout(() => setLocalError(null), 3000);
           setIsSubmitting(false);

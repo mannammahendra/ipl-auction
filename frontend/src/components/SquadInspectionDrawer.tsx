@@ -11,7 +11,6 @@ import {
   Coins,
   ShieldAlert,
   Search,
-  Filter,
   UserCheck,
   ChevronLeft,
   ChevronRight,
@@ -19,7 +18,6 @@ import {
 } from 'lucide-react';
 import TeamLogo from './TeamLogo';
 import { SquadPosterModal } from './SquadPosterModal';
-import { getPlayerPhoto } from '../lib/playerPhotos';
 import { PlayerPortrait } from './PlayerPortrait';
 
 interface SquadInspectionDrawerProps {

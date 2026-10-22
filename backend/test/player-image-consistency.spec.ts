@@ -157,7 +157,7 @@ describe('Player Image Consistency & Identity Preservation Tests', () => {
     });
 
     it('verifies zero explicit.bing.net domain URLs in PLAYER_PHOTOS', () => {
-      for (const [name, url] of Object.entries(PLAYER_PHOTOS)) {
+      for (const url of Object.values(PLAYER_PHOTOS)) {
         expect(url).not.toContain('explicit.bing.net');
       }
     });

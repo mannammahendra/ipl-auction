@@ -25,7 +25,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import TeamLogo from '../../../components/TeamLogo';
-import { copyToClipboard, shareOrCopyInvite } from '../../../lib/clipboard';
+import { copyToClipboard } from '../../../lib/clipboard';
 
 export default function LobbyPage() {
   const params = useParams();
@@ -37,7 +37,6 @@ export default function LobbyPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rulesApplied, setRulesApplied] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -356,20 +355,6 @@ export default function LobbyPage() {
       await copyToClipboard(room.code);
       setCopiedCode(true);
       setTimeout(() => setCopiedCode(false), 2500);
-    }
-  };
-
-  const handleNativeShare = async () => {
-    if (typeof window !== 'undefined' && room) {
-      const inviteUrl = `${window.location.origin}/?join=${room.code}`;
-      await shareOrCopyInvite({
-        title: 'IPL Mega Auction Invite',
-        roomName: room.name,
-        roomCode: room.code,
-        url: inviteUrl,
-      });
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
     }
   };
 
@@ -814,7 +799,7 @@ export default function LobbyPage() {
                             setRoom(updated);
                             setRulesApplied(true);
                             setTimeout(() => setRulesApplied(false), 2500);
-                          } catch (err) {}
+                          } catch {}
                         }
                       }}
                       className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-amber-500"

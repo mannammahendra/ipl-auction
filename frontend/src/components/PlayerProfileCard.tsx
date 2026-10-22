@@ -25,7 +25,6 @@ export const PlayerProfileCard = React.memo(function PlayerProfileCard({ auction
   }
 
   const { player } = auctionPlayer;
-  const isMarquee = player.tier === 'MARQUEE';
 
   const getRoleBadge = (role: string) => {
     switch (role) {

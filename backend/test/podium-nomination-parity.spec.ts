@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { useAuctionStore, AuctionPlayer, Room } from '../../frontend/src/lib/store';
 
 describe('Podium Nomination & Local/Production Parity Regression Suite', () => {

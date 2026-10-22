@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import TeamLogo from './TeamLogo';
 import { socketService } from '../lib/socket';
-import { getPlayerPhoto, getPlayerBasePriceList, BASE_PRICE_LISTS } from '../lib/playerPhotos';
+import { getPlayerBasePriceList, BASE_PRICE_LISTS } from '../lib/playerPhotos';
 import { PlayerPortrait } from './PlayerPortrait';
 
 interface AuctionPoolRecordsModalProps {
