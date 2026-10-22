@@ -851,7 +851,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Left-arm Fast Medium",
     "tier": "MARQUEE",
     "basePrice": 20000000,
-    "image": "https://ts1.mm.bing.net/th?id=OIP.7ilY_xlrZZTx-ij5mx4B7QHaEK&pid=15.1",
+    "image": "https://tse4.mm.bing.net/th/id/OIP.19Ht1JBTw8hLN3eGJSPIewHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":134,\"wickets\":162,\"economy\":7.45,\"avg\":24.8,\"bbi\":\"4/18\",\"runs\":335},\"t20\":{\"matches\":87,\"wickets\":104,\"economy\":\"7.05\",\"avg\":\"22.7\",\"bbi\":\"4/12\",\"runs\":174},\"odi\":{\"matches\":107,\"wickets\":155,\"economy\":\"5.25\",\"avg\":\"27.3\",\"bbi\":\"5/27\",\"runs\":428},\"test\":{\"matches\":35,\"wickets\":133,\"economy\":\"3.24\",\"avg\":\"26.0\",\"bbi\":\"6/38\",\"runs\":280}}"
   },
   {

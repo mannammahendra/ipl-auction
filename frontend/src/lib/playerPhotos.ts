@@ -426,7 +426,7 @@ export const PLAYER_PHOTOS: Record<string, string> = {
   "Yusuf Pathan": "https://ts2.mm.bing.net/th?id=OIP.0XlkCplzKYUxfz7tEsD3GAHaE8&pid=15.1",
   "Yuvraj Singh": "https://ts4.mm.bing.net/th?id=OIP.CPA1j7-yHVPsbg8vJFxbqgHaKL&pid=15.1",
   "Yuzvendra Chahal": "https://ts1.mm.bing.net/th?id=OIP.1RvP9UBxAtqllpnYglneqQHaHa&pid=15.1",
-  "Zaheer Khan": "https://ts1.mm.bing.net/th?id=OIP.7ilY_xlrZZTx-ij5mx4B7QHaEK&pid=15.1",
+  "Zaheer Khan": "https://tse4.mm.bing.net/th/id/OIP.19Ht1JBTw8hLN3eGJSPIewHaHa?r=0&pid=Api",
   "Zeeshan Ansari": "https://img.etimg.com/thumb/msid-119753128,width-300,height-225,imgsize-1943308,resizemode-75/zeeshan.jpg",
 };
 
