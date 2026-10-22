@@ -6,9 +6,10 @@ describe('Podium Nomination & Local/Production Parity Regression Suite', () => {
     const mockPlayer = {
       id: 'p1',
       name: 'Virat Kohli',
-      role: 'BATSMAN',
+      role: 'BATSMAN' as const,
       country: 'India',
       isOverseas: false,
+      tier: 'MARQUEE',
       basePrice: 20000000,
       image: '/players/virat_kohli.png',
       matches: 250,
@@ -27,8 +28,8 @@ describe('Podium Nomination & Local/Production Parity Regression Suite', () => {
       lotNumber: 1,
       round: 1,
       status: 'NOMINATED',
-      soldPrice: null,
-      soldToTeamId: null,
+      soldPrice: undefined,
+      soldToTeamId: undefined,
       player: mockPlayer,
     };
 
@@ -117,7 +118,19 @@ describe('Podium Nomination & Local/Production Parity Regression Suite', () => {
       useAuctionStore.setState({
         soldCelebration: {
           player: mockPlayer,
-          team: { id: 't1', roomId: 'room1', name: 'RCB', shortName: 'RCB', color: '#ff0000', startingPurse: 100, currentPurse: 50, totalPlayers: 1, overseasCount: 0, squad: [] },
+          team: {
+            id: 't1',
+            roomId: 'room1',
+            name: 'RCB',
+            shortName: 'RCB',
+            color: '#ff0000',
+            secondaryColor: '#000000',
+            initialPurse: 1000000000,
+            currentPurse: 500000000,
+            totalPlayers: 1,
+            overseasCount: 0,
+            squad: [],
+          },
           amount: 20000000,
         },
       });
