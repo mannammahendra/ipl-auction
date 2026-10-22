@@ -239,7 +239,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Offbreak",
     "tier": "MARQUEE",
     "basePrice": 20000000,
-    "image": "https://tse1.mm.bing.net/th/id/OIP.jcrRT96-X31-csO6UgetwAHaHa?r=0&pid=Api",
+    "image": "https://tse4.mm.bing.net/th/id/OIP.n7YUXQqC-vwUN0s5DJ5nlQHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":151,\"runs\":3544,\"wickets\":135,\"avg\":29.5,\"strikeRate\":157.6,\"economy\":8.89,\"fifties\":11,\"bbi\":\"4/22\"},\"t20\":{\"matches\":106,\"runs\":2304,\"wickets\":95,\"avg\":27.2,\"strikeRate\":\"153.6\",\"economy\":\"8.59\",\"fifties\":5,\"bbi\":\"3/16\"},\"odi\":{\"matches\":128,\"runs\":3898,\"wickets\":122,\"avg\":34.6,\"strikeRate\":98.4,\"economy\":5.35,\"fifties\":11,\"hundreds\":2,\"bbi\":\"4/35\"},\"test\":{\"matches\":53,\"runs\":2835,\"wickets\":108,\"avg\":33.2,\"strikeRate\":64.2,\"economy\":3.25,\"fifties\":7,\"hundreds\":3,\"bbi\":\"5/48\"}}"
   },
   {
@@ -275,7 +275,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Offbreak",
     "tier": "MARQUEE",
     "basePrice": 20000000,
-    "image": "https://tse4.mm.bing.net/th/id/OIP.flZZj5YTbr317wrq2u8jzwHaHa?r=0&pid=Api",
+    "image": "https://tse2.mm.bing.net/th/id/OIP.3y8RrPWeSmZ9dXtSdBz_KAHaJQ?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":235,\"runs\":6891,\"avg\":34.5,\"strikeRate\":138.9,\"hundreds\":1,\"fifties\":26,\"dismissals\":212},\"t20\":{\"matches\":141,\"runs\":4135,\"avg\":\"32.5\",\"strikeRate\":138.9,\"fifties\":6,\"dismissals\":141},\"odi\":{\"matches\":188,\"runs\":7580,\"avg\":\"40.5\",\"strikeRate\":92.5,\"hundreds\":4,\"fifties\":14,\"dismissals\":212},\"test\":{\"matches\":94,\"runs\":4824,\"avg\":\"42.5\",\"strikeRate\":62,\"hundreds\":5,\"fifties\":11,\"dismissals\":282}}"
   },
   {
@@ -371,7 +371,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Offbreak",
     "tier": "CAPPED",
     "basePrice": 20000000,
-    "image": "https://tse4.mm.bing.net/th/id/OIP.LbD99GymcGffk89-SR4TAgHaJQ?r=0&pid=Api",
+    "image": "https://tse4.mm.bing.net/th/id/OIP.2WRVwwV9J3aomZKPT0hgNAHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":58,\"runs\":1839,\"avg\":37.3,\"strikeRate\":128.8,\"hundreds\":0,\"fifties\":7,\"wickets\":0},\"t20\":{\"matches\":41,\"runs\":1230,\"avg\":\"35.8\",\"strikeRate\":\"126.8\",\"hundreds\":0,\"fifties\":4,\"wickets\":0},\"odi\":{\"matches\":52,\"runs\":1884,\"avg\":\"45.5\",\"strikeRate\":\"88.2\",\"hundreds\":0,\"fifties\":6,\"wickets\":0},\"test\":{\"matches\":21,\"runs\":1490,\"avg\":\"46.8\",\"strikeRate\":\"54.2\",\"hundreds\":4,\"fifties\":7,\"wickets\":0}}"
   },
   {
@@ -443,7 +443,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Medium",
     "tier": "MARQUEE",
     "basePrice": 20000000,
-    "image": "https://tse1.mm.bing.net/th/id/OIP.uTvHrKLgvaIlNJaPR5Vi5wHaHa?r=0&pid=Api",
+    "image": "https://tse4.mm.bing.net/th/id/OIP.mMgfw7C3PnphpbirZo1L6wHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":204,\"runs\":5375,\"avg\":31,\"strikeRate\":142.3,\"hundreds\":1,\"fifties\":20,\"dismissals\":184},\"t20\":{\"matches\":122,\"runs\":3225,\"avg\":\"29.0\",\"strikeRate\":142.3,\"fifties\":6,\"dismissals\":122},\"odi\":{\"matches\":163,\"runs\":5913,\"avg\":\"37.0\",\"strikeRate\":92.5,\"hundreds\":4,\"fifties\":14,\"dismissals\":184},\"test\":{\"matches\":82,\"runs\":3762,\"avg\":\"39.0\",\"strikeRate\":62,\"hundreds\":5,\"fifties\":11,\"dismissals\":245}}"
   },
   {
@@ -707,7 +707,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Legbreak",
     "tier": "MARQUEE",
     "basePrice": 20000000,
-    "image": "https://tse2.mm.bing.net/th/id/OIP.Zx3mz1p1L-SjZIRl-ocl8wHaHa?r=0&pid=Api",
+    "image": "https://tse1.mm.bing.net/th/id/OIP.BTDnQzfQb_9xdiB6hpNkIwHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":222,\"runs\":7661,\"avg\":40.6,\"strikeRate\":128.6,\"hundreds\":1,\"fifties\":29,\"wickets\":0},\"t20\":{\"matches\":155,\"runs\":5086,\"avg\":\"39.1\",\"strikeRate\":\"126.6\",\"hundreds\":0,\"fifties\":17,\"wickets\":0},\"odi\":{\"matches\":200,\"runs\":7776,\"avg\":\"48.8\",\"strikeRate\":\"93.7\",\"hundreds\":2,\"fifties\":26,\"wickets\":0},\"test\":{\"matches\":66,\"runs\":5009,\"avg\":\"50.1\",\"strikeRate\":\"56.9\",\"hundreds\":11,\"fifties\":22,\"wickets\":0}}"
   },
   {
@@ -935,7 +935,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Fast",
     "tier": "CAPPED",
     "basePrice": 15000000,
-    "image": "https://tse4.mm.bing.net/th/id/OIP.JVfn-oxkBx3NFf8bY-dhVgHaHa?r=0&pid=Api",
+    "image": "https://tse3.mm.bing.net/th/id/OIP.6AMqSnT6hLBlYDW2OBfkAAHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":99,\"wickets\":126,\"economy\":7.22,\"avg\":23.6,\"bbi\":\"4/18\",\"runs\":248},\"t20\":{\"matches\":64,\"wickets\":77,\"economy\":\"6.82\",\"avg\":\"21.5\",\"bbi\":\"4/12\",\"runs\":128},\"odi\":{\"matches\":79,\"wickets\":115,\"economy\":\"5.02\",\"avg\":\"26.1\",\"bbi\":\"5/27\",\"runs\":316},\"test\":{\"matches\":20,\"wickets\":76,\"economy\":\"2.89\",\"avg\":\"24.8\",\"bbi\":\"6/38\",\"runs\":160}}"
   },
   {
@@ -1307,7 +1307,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Offbreak",
     "tier": "CAPPED",
     "basePrice": 15000000,
-    "image": "https://tse4.mm.bing.net/th/id/OIP.vQPIlUrRLlmUdzVwOmZ4zgHaHa?r=0&pid=Api",
+    "image": "https://tse4.mm.bing.net/th/id/OIP.3VX4ePXXKWkUeJaJkdA_7QHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":73,\"runs\":2143,\"wickets\":59,\"avg\":29.5,\"strikeRate\":158.6,\"economy\":8.79,\"fifties\":7,\"bbi\":\"4/22\"},\"t20\":{\"matches\":51,\"runs\":1393,\"wickets\":41,\"avg\":27.2,\"strikeRate\":\"154.6\",\"economy\":\"8.49\",\"fifties\":5,\"bbi\":\"3/16\"},\"odi\":{\"matches\":62,\"runs\":2357,\"wickets\":53,\"avg\":34.6,\"strikeRate\":98.4,\"economy\":5.35,\"fifties\":11,\"hundreds\":2,\"bbi\":\"4/35\"},\"test\":{\"matches\":26,\"runs\":1714,\"wickets\":47,\"avg\":33.2,\"strikeRate\":64.2,\"economy\":3.25,\"fifties\":7,\"hundreds\":3,\"bbi\":\"5/48\"}}"
   },
   {
@@ -1535,7 +1535,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Medium",
     "tier": "CAPPED",
     "basePrice": 15000000,
-    "image": "https://tse3.mm.bing.net/th/id/OIP.pcoCdCOzDAQkNWjyXDcyqgHaHa?r=0&pid=Api",
+    "image": "https://tse3.mm.bing.net/th/id/OIP.fYigP22SagdonJrubKavowHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":90,\"runs\":1989,\"wickets\":87,\"avg\":29.5,\"strikeRate\":144.2,\"economy\":8.66,\"fifties\":6,\"bbi\":\"4/22\"},\"t20\":{\"matches\":63,\"runs\":1293,\"wickets\":61,\"avg\":27.2,\"strikeRate\":\"140.2\",\"economy\":\"8.36\",\"fifties\":5,\"bbi\":\"3/16\"},\"odi\":{\"matches\":77,\"runs\":2188,\"wickets\":78,\"avg\":34.6,\"strikeRate\":98.4,\"economy\":5.35,\"fifties\":11,\"hundreds\":2,\"bbi\":\"4/35\"},\"test\":{\"matches\":31,\"runs\":1591,\"wickets\":70,\"avg\":33.2,\"strikeRate\":64.2,\"economy\":3.25,\"fifties\":7,\"hundreds\":3,\"bbi\":\"5/48\"}}"
   },
   {
@@ -1547,7 +1547,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Left-arm Fast",
     "tier": "CAPPED",
     "basePrice": 15000000,
-    "image": "https://tse3.mm.bing.net/th/id/OIP.iFwlhljX-_sIQGJFXVD3RgHaHa?r=0&pid=Api",
+    "image": "https://tse2.mm.bing.net/th/id/OIP.qZZLKXlYyEJ256noLzp2CAHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":80,\"wickets\":101,\"economy\":8.33,\"avg\":22.3,\"bbi\":\"4/18\",\"runs\":200},\"t20\":{\"matches\":52,\"wickets\":62,\"economy\":\"7.93\",\"avg\":\"20.2\",\"bbi\":\"4/12\",\"runs\":104},\"odi\":{\"matches\":64,\"wickets\":93,\"economy\":\"6.13\",\"avg\":\"24.8\",\"bbi\":\"5/27\",\"runs\":256},\"test\":{\"matches\":11,\"wickets\":42,\"economy\":\"2.92\",\"avg\":\"23.5\",\"bbi\":\"6/38\",\"runs\":88}}"
   },
   {
@@ -1595,7 +1595,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Offbreak",
     "tier": "CAPPED",
     "basePrice": 15000000,
-    "image": "https://tse2.mm.bing.net/th/id/OIP.GBOlt0854AAo3rBe3g3QNQHaHa?r=0&pid=Api",
+    "image": "https://tse2.mm.bing.net/th/id/OIP.QG0NcQNRCfvurszTOSPTsAHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":117,\"runs\":3590,\"avg\":36.1,\"strikeRate\":131.8,\"hundreds\":1,\"fifties\":13,\"wickets\":0},\"t20\":{\"matches\":82,\"runs\":2377,\"avg\":\"34.6\",\"strikeRate\":\"129.8\",\"hundreds\":0,\"fifties\":8,\"wickets\":0},\"odi\":{\"matches\":105,\"runs\":3704,\"avg\":\"44.3\",\"strikeRate\":\"96.6\",\"hundreds\":2,\"fifties\":12,\"wickets\":0},\"test\":{\"matches\":24,\"runs\":1660,\"avg\":\"45.6\",\"strikeRate\":\"55.5\",\"hundreds\":4,\"fifties\":8,\"wickets\":0}}"
   },
   {
@@ -1703,7 +1703,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm medium",
     "tier": "CAPPED",
     "basePrice": 10000000,
-    "image": "https://tse1.mm.bing.net/th/id/OIP.Jh1VZkbWdVBNrZvqXIkMtgHaHa?r=0&pid=Api",
+    "image": "https://tse4.mm.bing.net/th/id/OIP.TOCnvYGeXyVDm0_vnrjvFQHaJQ?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":67,\"runs\":2164,\"avg\":38,\"strikeRate\":147.3,\"hundreds\":0,\"fifties\":8,\"dismissals\":60},\"t20\":{\"matches\":40,\"runs\":1298,\"avg\":\"36.0\",\"strikeRate\":147.3,\"fifties\":6,\"dismissals\":40},\"odi\":{\"matches\":54,\"runs\":2380,\"avg\":\"44.0\",\"strikeRate\":92.5,\"hundreds\":4,\"fifties\":14,\"dismissals\":60},\"test\":{\"matches\":27,\"runs\":1515,\"avg\":\"46.0\",\"strikeRate\":62,\"hundreds\":5,\"fifties\":11,\"dismissals\":80}}"
   },
   {
@@ -1835,7 +1835,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Offbreak",
     "tier": "CAPPED",
     "basePrice": 10000000,
-    "image": "https://tse1.mm.bing.net/th/id/OIP.bdoZmf6WJiiHNxbDfv2pRAHaHa?r=0&pid=Api",
+    "image": "https://tse4.mm.bing.net/th/id/OIP.pxKCc6JXpMs2bGs6w_oaOAAAAA?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":53,\"runs\":1527,\"avg\":33.9,\"strikeRate\":146,\"hundreds\":1,\"fifties\":5,\"wickets\":0},\"t20\":{\"matches\":37,\"runs\":1003,\"avg\":\"32.4\",\"strikeRate\":\"144.0\",\"hundreds\":0,\"fifties\":3,\"wickets\":0},\"odi\":{\"matches\":48,\"runs\":1609,\"avg\":\"42.1\",\"strikeRate\":\"89.3\",\"hundreds\":2,\"fifties\":5,\"wickets\":0},\"test\":{\"matches\":34,\"runs\":2239,\"avg\":\"43.4\",\"strikeRate\":\"53.5\",\"hundreds\":6,\"fifties\":11,\"wickets\":0}}"
   },
   {
@@ -1871,7 +1871,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Offbreak",
     "tier": "CAPPED",
     "basePrice": 10000000,
-    "image": "https://tse3.mm.bing.net/th/id/OIP.M9WlLfGcgrOXbfhfyZGnVQHaHa?r=0&pid=Api",
+    "image": "https://tse1.mm.bing.net/th/id/OIP.KUJGhA-N6kAVE04DIf0R0AAAAA?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":89,\"runs\":2549,\"avg\":33.7,\"strikeRate\":145.1,\"hundreds\":2,\"fifties\":9,\"dismissals\":80},\"t20\":{\"matches\":53,\"runs\":1529,\"avg\":\"31.7\",\"strikeRate\":145.1,\"fifties\":6,\"dismissals\":53},\"odi\":{\"matches\":71,\"runs\":2804,\"avg\":\"39.7\",\"strikeRate\":92.5,\"hundreds\":4,\"fifties\":14,\"dismissals\":80},\"test\":{\"matches\":36,\"runs\":1784,\"avg\":\"41.7\",\"strikeRate\":62,\"hundreds\":5,\"fifties\":11,\"dismissals\":107}}"
   },
   {
@@ -1883,7 +1883,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm offbreak",
     "tier": "CAPPED",
     "basePrice": 10000000,
-    "image": "https://tse2.mm.bing.net/th/id/OIP.qVmYFxszlOsMX0OjsqGUTAHaHa?r=0&pid=Api",
+    "image": "https://tse1.mm.bing.net/th/id/OIP.5WI_HGbrmxyNe6DcLrczmQHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":99,\"runs\":2945,\"wickets\":85,\"avg\":29.5,\"strikeRate\":145.4,\"economy\":8.1,\"fifties\":9,\"bbi\":\"4/22\"},\"t20\":{\"matches\":69,\"runs\":1914,\"wickets\":59,\"avg\":27.2,\"strikeRate\":\"141.4\",\"economy\":\"7.80\",\"fifties\":5,\"bbi\":\"3/16\"},\"odi\":{\"matches\":84,\"runs\":3240,\"wickets\":77,\"avg\":34.6,\"strikeRate\":98.4,\"economy\":5.35,\"fifties\":11,\"hundreds\":2,\"bbi\":\"4/35\"},\"test\":{\"matches\":35,\"runs\":2356,\"wickets\":68,\"avg\":33.2,\"strikeRate\":64.2,\"economy\":3.25,\"fifties\":7,\"hundreds\":3,\"bbi\":\"5/48\"}}"
   },
   {
@@ -1979,7 +1979,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Medium",
     "tier": "CAPPED",
     "basePrice": 10000000,
-    "image": "https://tse2.mm.bing.net/th/id/OIP.oEBZ1RUCozMNfHXZnMpQeQHaHa?r=0&pid=Api",
+    "image": "https://tse2.mm.bing.net/th/id/OIP.3PUZNS-SPzyrDv3bmUrwbQHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":89,\"runs\":2300,\"avg\":30.4,\"strikeRate\":128.8,\"hundreds\":1,\"fifties\":8,\"wickets\":0},\"t20\":{\"matches\":62,\"runs\":1497,\"avg\":\"28.9\",\"strikeRate\":\"126.8\",\"hundreds\":0,\"fifties\":5,\"wickets\":0},\"odi\":{\"matches\":80,\"runs\":2458,\"avg\":\"38.6\",\"strikeRate\":\"100.0\",\"hundreds\":2,\"fifties\":7,\"wickets\":0},\"test\":{\"matches\":27,\"runs\":1636,\"avg\":\"39.9\",\"strikeRate\":\"54.5\",\"hundreds\":5,\"fifties\":9,\"wickets\":0}}"
   },
   {
@@ -1991,7 +1991,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm offbreak",
     "tier": "CAPPED",
     "basePrice": 10000000,
-    "image": "https://tse1.mm.bing.net/th/id/OIP.fqjKFRKRpmw4ezYKpmMDcgHaHa?r=0&pid=Api",
+    "image": "https://tse4.mm.bing.net/th/id/OIP.I1MuRLfsJNg-mIuzq16iqAHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":102,\"runs\":2670,\"wickets\":81,\"avg\":29.5,\"strikeRate\":172,\"economy\":9.04,\"fifties\":8,\"bbi\":\"4/22\"},\"t20\":{\"matches\":71,\"runs\":1736,\"wickets\":57,\"avg\":27.2,\"strikeRate\":\"168.0\",\"economy\":\"8.74\",\"fifties\":5,\"bbi\":\"3/16\"},\"odi\":{\"matches\":87,\"runs\":2937,\"wickets\":73,\"avg\":34.6,\"strikeRate\":98.4,\"economy\":5.35,\"fifties\":11,\"hundreds\":2,\"bbi\":\"4/35\"},\"test\":{\"matches\":36,\"runs\":2136,\"wickets\":65,\"avg\":33.2,\"strikeRate\":64.2,\"economy\":3.25,\"fifties\":7,\"hundreds\":3,\"bbi\":\"5/48\"}}"
   },
   {
@@ -2111,7 +2111,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Medium",
     "tier": "CAPPED",
     "basePrice": 10000000,
-    "image": "https://tse3.mm.bing.net/th/id/OIP.Q4nfTE77yi7duijT6gfcXQHaHa?r=0&pid=Api",
+    "image": "https://tse1.mm.bing.net/th/id/OIP.MxKtsc8z-FAxL5A2hz4MJwHaJQ?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":74,\"runs\":1779,\"wickets\":58,\"avg\":29.5,\"strikeRate\":171.1,\"economy\":7.91,\"fifties\":6,\"bbi\":\"4/22\"},\"t20\":{\"matches\":52,\"runs\":1156,\"wickets\":41,\"avg\":27.2,\"strikeRate\":\"167.1\",\"economy\":\"7.61\",\"fifties\":5,\"bbi\":\"3/16\"},\"odi\":{\"matches\":63,\"runs\":1957,\"wickets\":52,\"avg\":34.6,\"strikeRate\":98.4,\"economy\":5.35,\"fifties\":11,\"hundreds\":2,\"bbi\":\"4/35\"},\"test\":{\"matches\":26,\"runs\":1423,\"wickets\":46,\"avg\":33.2,\"strikeRate\":64.2,\"economy\":3.25,\"fifties\":7,\"hundreds\":3,\"bbi\":\"5/48\"}}"
   },
   {
@@ -2375,7 +2375,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Medium",
     "tier": "CAPPED",
     "basePrice": 10000000,
-    "image": "https://tse1.mm.bing.net/th/id/OIP.kSwhWjVKJId6Yo1bPZqLIgHaHa?r=0&pid=Api",
+    "image": "https://tse2.mm.bing.net/th/id/OIP.pKCJale2zpiPuJYPaD_cxwHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":61,\"runs\":1638,\"avg\":31.6,\"strikeRate\":137.8,\"hundreds\":0,\"fifties\":6,\"wickets\":0},\"t20\":{\"matches\":43,\"runs\":1082,\"avg\":\"30.1\",\"strikeRate\":\"135.8\",\"hundreds\":0,\"fifties\":4,\"wickets\":0},\"odi\":{\"matches\":55,\"runs\":1742,\"avg\":\"39.8\",\"strikeRate\":\"92.1\",\"hundreds\":0,\"fifties\":5,\"wickets\":0},\"test\":{\"matches\":30,\"runs\":1872,\"avg\":\"41.1\",\"strikeRate\":\"52.4\",\"hundreds\":5,\"fifties\":10,\"wickets\":0}}"
   },
   {
@@ -2531,7 +2531,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm offbreak",
     "tier": "CAPPED",
     "basePrice": 10000000,
-    "image": "https://tse1.mm.bing.net/th/id/OIP.yPPKVM8ZnTiFufD9LRhMhQHaHa?r=0&pid=Api",
+    "image": "https://tse4.mm.bing.net/th/id/OIP.pg6rumtLGVhDA0c_aHH9owHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":85,\"runs\":2478,\"avg\":34.3,\"strikeRate\":142.7,\"hundreds\":0,\"fifties\":9,\"dismissals\":77},\"t20\":{\"matches\":51,\"runs\":1487,\"avg\":\"32.3\",\"strikeRate\":142.7,\"fifties\":6,\"dismissals\":51},\"odi\":{\"matches\":68,\"runs\":2726,\"avg\":\"40.3\",\"strikeRate\":92.5,\"hundreds\":4,\"fifties\":14,\"dismissals\":77},\"test\":{\"matches\":34,\"runs\":1735,\"avg\":\"42.3\",\"strikeRate\":62,\"hundreds\":5,\"fifties\":11,\"dismissals\":102}}"
   },
   {
@@ -2963,7 +2963,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Offbreak",
     "tier": "CAPPED",
     "basePrice": 7500000,
-    "image": "https://tse1.mm.bing.net/th/id/OIP.IcWpGqHi8ZPGYe8umKGJ8AHaHa?r=0&pid=Api",
+    "image": "https://tse1.mm.bing.net/th/id/OIP.JwTvVZPmZDVG3i7-tQkBJgHaJQ?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":104,\"runs\":2877,\"wickets\":105,\"avg\":29.5,\"strikeRate\":161.5,\"economy\":9.18,\"fifties\":9,\"bbi\":\"4/22\"},\"t20\":{\"matches\":73,\"runs\":1870,\"wickets\":74,\"avg\":27.2,\"strikeRate\":\"157.5\",\"economy\":\"8.88\",\"fifties\":5,\"bbi\":\"3/16\"},\"odi\":{\"matches\":88,\"runs\":3165,\"wickets\":95,\"avg\":34.6,\"strikeRate\":98.4,\"economy\":5.35,\"fifties\":11,\"hundreds\":2,\"bbi\":\"4/35\"},\"test\":{\"matches\":36,\"runs\":2302,\"wickets\":84,\"avg\":33.2,\"strikeRate\":64.2,\"economy\":3.25,\"fifties\":7,\"hundreds\":3,\"bbi\":\"5/48\"}}"
   },
   {
@@ -2999,7 +2999,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Offbreak",
     "tier": "CAPPED",
     "basePrice": 7500000,
-    "image": "https://tse1.mm.bing.net/th/id/OIP.A2wLUumG-Ar2JgNdbPXacAHaHa?r=0&pid=Api",
+    "image": "https://tse4.mm.bing.net/th/id/OIP.CxcQ6WCmHzCGW65bWylQ7wHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":112,\"runs\":2948,\"wickets\":96,\"avg\":29.5,\"strikeRate\":150.5,\"economy\":9.05,\"fifties\":9,\"bbi\":\"4/22\"},\"t20\":{\"matches\":78,\"runs\":1916,\"wickets\":67,\"avg\":27.2,\"strikeRate\":\"146.5\",\"economy\":\"8.75\",\"fifties\":5,\"bbi\":\"3/16\"},\"odi\":{\"matches\":95,\"runs\":3243,\"wickets\":86,\"avg\":34.6,\"strikeRate\":98.4,\"economy\":5.35,\"fifties\":11,\"hundreds\":2,\"bbi\":\"4/35\"},\"test\":{\"matches\":39,\"runs\":2358,\"wickets\":77,\"avg\":33.2,\"strikeRate\":64.2,\"economy\":3.25,\"fifties\":7,\"hundreds\":3,\"bbi\":\"5/48\"}}"
   },
   {
@@ -3131,7 +3131,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Medium",
     "tier": "CAPPED",
     "basePrice": 7500000,
-    "image": "https://tse2.mm.bing.net/th/id/OIP.Wm2uA6gWzC6FxGSv_c3oDAHaLH?r=0&pid=Api",
+    "image": "https://tse1.mm.bing.net/th/id/OIP.94i5oTKqC5_1xwwbLtqqKgHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":50,\"runs\":1568,\"avg\":36.9,\"strikeRate\":152.8,\"hundreds\":1,\"fifties\":6,\"dismissals\":45},\"t20\":{\"matches\":30,\"runs\":941,\"avg\":\"34.9\",\"strikeRate\":152.8,\"fifties\":6,\"dismissals\":30},\"odi\":{\"matches\":40,\"runs\":1725,\"avg\":\"42.9\",\"strikeRate\":92.5,\"hundreds\":4,\"fifties\":14,\"dismissals\":45},\"test\":{\"matches\":20,\"runs\":1098,\"avg\":\"44.9\",\"strikeRate\":62,\"hundreds\":5,\"fifties\":11,\"dismissals\":60}}"
   },
   {
@@ -3191,7 +3191,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Left-arm Wrist Spin",
     "tier": "CAPPED",
     "basePrice": 7500000,
-    "image": "https://tse1.mm.bing.net/th/id/OIP.F7r_FWG9npvY3ZzkdCuhYQHaHa?r=0&pid=Api",
+    "image": "https://tse1.mm.bing.net/th/id/OIP.tSQaE2JZFbAPuLvV0_KuLwHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":62,\"wickets\":86,\"economy\":7.1,\"avg\":22.5,\"bbi\":\"4/18\",\"runs\":155},\"t20\":{\"matches\":40,\"wickets\":48,\"economy\":\"6.70\",\"avg\":\"20.4\",\"bbi\":\"4/12\",\"runs\":80},\"odi\":{\"matches\":50,\"wickets\":73,\"economy\":\"4.90\",\"avg\":\"25.0\",\"bbi\":\"5/27\",\"runs\":200},\"test\":{\"matches\":17,\"wickets\":65,\"economy\":\"3.02\",\"avg\":\"23.7\",\"bbi\":\"6/38\",\"runs\":136}}"
   },
   {
@@ -3371,7 +3371,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Offbreak",
     "tier": "UNCAPPED",
     "basePrice": 5000000,
-    "image": "https://tse2.mm.bing.net/th/id/OIP.I9n55GAOUnm7c7QSYpduZQHaHa?r=0&pid=Api",
+    "image": "https://tse3.mm.bing.net/th/id/OIP.nkiAIIlnz2O3xPWz0E4xxQHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":25,\"runs\":824,\"avg\":38.8,\"strikeRate\":141,\"hundreds\":0,\"fifties\":3,\"wickets\":0},\"t20\":{\"matches\":18,\"runs\":563,\"avg\":\"37.3\",\"strikeRate\":\"139.0\",\"hundreds\":0,\"fifties\":2,\"wickets\":0},\"odi\":{\"matches\":9,\"runs\":337,\"avg\":\"47.0\",\"strikeRate\":\"91.9\",\"hundreds\":0,\"fifties\":3,\"wickets\":0},\"test\":{\"matches\":0,\"runs\":0,\"avg\":\"48.3\",\"strikeRate\":\"57.9\",\"hundreds\":0,\"fifties\":0,\"wickets\":0}}"
   },
   {
@@ -3647,7 +3647,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Offbreak",
     "tier": "CAPPED",
     "basePrice": 5000000,
-    "image": "https://tse1.mm.bing.net/th/id/OIP.yPPKVM8ZnTiFufD9LRhMhQHaHa?r=0&pid=Api",
+    "image": "https://tse4.mm.bing.net/th/id/OIP.pg6rumtLGVhDA0c_aHH9owHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":72,\"runs\":2356,\"avg\":38.5,\"strikeRate\":142.2,\"hundreds\":0,\"fifties\":9,\"dismissals\":65},\"t20\":{\"matches\":43,\"runs\":1414,\"avg\":\"36.5\",\"strikeRate\":142.2,\"fifties\":6,\"dismissals\":43},\"odi\":{\"matches\":58,\"runs\":2592,\"avg\":\"44.5\",\"strikeRate\":92.5,\"hundreds\":4,\"fifties\":14,\"dismissals\":65},\"test\":{\"matches\":29,\"runs\":1649,\"avg\":\"46.5\",\"strikeRate\":62,\"hundreds\":5,\"fifties\":11,\"dismissals\":86}}"
   },
   {
@@ -3791,7 +3791,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Left-arm Medium Fast",
     "tier": "CAPPED",
     "basePrice": 5000000,
-    "image": "https://tse1.mm.bing.net/th/id/OIP.ADrLRW7khPoA5D5PKeUa1wHaHa?r=0&pid=Api",
+    "image": "https://tse1.mm.bing.net/th/id/OIP.ja3xckHdDJRiGGzLKBWe3AHaJQ?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":81,\"wickets\":101,\"economy\":8.33,\"avg\":25.5,\"bbi\":\"4/18\",\"runs\":203},\"t20\":{\"matches\":53,\"wickets\":64,\"economy\":\"7.93\",\"avg\":\"23.4\",\"bbi\":\"4/12\",\"runs\":106},\"odi\":{\"matches\":65,\"wickets\":94,\"economy\":\"6.13\",\"avg\":\"28.0\",\"bbi\":\"5/27\",\"runs\":260},\"test\":{\"matches\":31,\"wickets\":118,\"economy\":\"3.40\",\"avg\":\"26.7\",\"bbi\":\"6/38\",\"runs\":248}}"
   },
   {
@@ -3803,7 +3803,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Legbreak",
     "tier": "CAPPED",
     "basePrice": 5000000,
-    "image": "https://tse2.mm.bing.net/th/id/OIP.tJES4oti7Xpm8WwM0f3ptgHaHa?r=0&pid=Api",
+    "image": "https://tse3.mm.bing.net/th/id/OIP.W05CXAch8U4p5nxey3ZjaQHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":65,\"wickets\":77,\"economy\":7.45,\"avg\":22.1,\"bbi\":\"4/18\",\"runs\":163},\"t20\":{\"matches\":42,\"wickets\":50,\"economy\":\"7.05\",\"avg\":\"20.0\",\"bbi\":\"4/12\",\"runs\":84},\"odi\":{\"matches\":52,\"wickets\":75,\"economy\":\"5.25\",\"avg\":\"24.6\",\"bbi\":\"5/27\",\"runs\":208},\"test\":{\"matches\":22,\"wickets\":84,\"economy\":\"2.94\",\"avg\":\"23.3\",\"bbi\":\"6/38\",\"runs\":176}}"
   },
   {
@@ -3851,7 +3851,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Offbreak",
     "tier": "CAPPED",
     "basePrice": 5000000,
-    "image": "https://tse2.mm.bing.net/th/id/OIP.lcf0gqjDJQcsBhmntzJ2gQHaHa?r=0&pid=Api",
+    "image": "https://tse4.mm.bing.net/th/id/OIP.gWCDPDQ_izlZDFiKJ24_LwHaEk?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":54,\"runs\":1562,\"wickets\":41,\"avg\":29.5,\"strikeRate\":160.3,\"economy\":9.06,\"fifties\":5,\"bbi\":\"4/22\"},\"t20\":{\"matches\":38,\"runs\":1015,\"wickets\":29,\"avg\":27.2,\"strikeRate\":\"156.3\",\"economy\":\"8.76\",\"fifties\":5,\"bbi\":\"3/16\"},\"odi\":{\"matches\":46,\"runs\":1718,\"wickets\":37,\"avg\":34.6,\"strikeRate\":98.4,\"economy\":5.35,\"fifties\":11,\"hundreds\":2,\"bbi\":\"4/35\"},\"test\":{\"matches\":19,\"runs\":1250,\"wickets\":33,\"avg\":33.2,\"strikeRate\":64.2,\"economy\":3.25,\"fifties\":7,\"hundreds\":3,\"bbi\":\"5/48\"}}"
   },
   {
@@ -3971,7 +3971,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Slow Left-arm Orthodox",
     "tier": "CAPPED",
     "basePrice": 5000000,
-    "image": "https://tse2.mm.bing.net/th/id/OIP.FFGLUMDmjoaFc3oFuR4I_QHaHa?r=0&pid=Api",
+    "image": "https://tse2.mm.bing.net/th/id/OIP.6XiLcRh7meLZkIQ-Os7IqAHaJQ?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":68,\"wickets\":84,\"economy\":7.72,\"avg\":25.2,\"bbi\":\"4/18\",\"runs\":170},\"t20\":{\"matches\":44,\"wickets\":53,\"economy\":\"7.32\",\"avg\":\"23.1\",\"bbi\":\"4/12\",\"runs\":88},\"odi\":{\"matches\":54,\"wickets\":78,\"economy\":\"5.52\",\"avg\":\"27.7\",\"bbi\":\"5/27\",\"runs\":216},\"test\":{\"matches\":12,\"wickets\":46,\"economy\":\"3.39\",\"avg\":\"26.4\",\"bbi\":\"6/38\",\"runs\":96}}"
   },
   {
@@ -3983,7 +3983,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Medium",
     "tier": "UNCAPPED",
     "basePrice": 5000000,
-    "image": "https://tse2.mm.bing.net/th/id/OIP.cn4bAsMbzJMGOOryC0aHIAHaHa?r=0&pid=Api",
+    "image": "https://tse4.mm.bing.net/th/id/OIP.8PiSHccoDKTXzQC10WMB_QHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":29,\"runs\":910,\"avg\":36.9,\"strikeRate\":130.7,\"hundreds\":1,\"fifties\":3,\"wickets\":0},\"t20\":{\"matches\":20,\"runs\":593,\"avg\":\"35.4\",\"strikeRate\":\"128.7\",\"hundreds\":0,\"fifties\":2,\"wickets\":0},\"odi\":{\"matches\":4,\"runs\":144,\"avg\":\"45.1\",\"strikeRate\":\"90.9\",\"hundreds\":2,\"fifties\":3,\"wickets\":0},\"test\":{\"matches\":2,\"runs\":141,\"avg\":\"46.4\",\"strikeRate\":\"52.0\",\"hundreds\":0,\"fifties\":1,\"wickets\":0}}"
   },
   {
@@ -4103,7 +4103,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Fast",
     "tier": "CAPPED",
     "basePrice": 5000000,
-    "image": "https://tse2.mm.bing.net/th/id/OIP.Z1FM75VR9cFjSDCSv3JNDAHaHa?r=0&pid=Api",
+    "image": "https://tse3.mm.bing.net/th/id/OIP.g3TDYGZnvLfJlipRKwcw8AHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":89,\"wickets\":105,\"economy\":7.84,\"avg\":23.6,\"bbi\":\"4/18\",\"runs\":223},\"t20\":{\"matches\":58,\"wickets\":70,\"economy\":\"7.44\",\"avg\":\"21.5\",\"bbi\":\"4/12\",\"runs\":116},\"odi\":{\"matches\":71,\"wickets\":103,\"economy\":\"5.64\",\"avg\":\"26.1\",\"bbi\":\"5/27\",\"runs\":284},\"test\":{\"matches\":21,\"wickets\":80,\"economy\":\"2.61\",\"avg\":\"24.8\",\"bbi\":\"6/38\",\"runs\":168}}"
   },
   {
@@ -4211,7 +4211,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Medium",
     "tier": "CAPPED",
     "basePrice": 4000000,
-    "image": "https://tse4.mm.bing.net/th/id/OIP.CARDUxIZTkplsF1quG19pAHaHa?r=0&pid=Api",
+    "image": "https://tse2.mm.bing.net/th/id/OIP.VQ7cFMoKQfCrPX5e8emQSwHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":85,\"runs\":2738,\"avg\":37.9,\"strikeRate\":151.6,\"hundreds\":1,\"fifties\":10,\"dismissals\":77},\"t20\":{\"matches\":51,\"runs\":1643,\"avg\":\"35.9\",\"strikeRate\":151.6,\"fifties\":6,\"dismissals\":51},\"odi\":{\"matches\":68,\"runs\":3012,\"avg\":\"43.9\",\"strikeRate\":92.5,\"hundreds\":4,\"fifties\":14,\"dismissals\":77},\"test\":{\"matches\":34,\"runs\":1917,\"avg\":\"45.9\",\"strikeRate\":62,\"hundreds\":5,\"fifties\":11,\"dismissals\":102}}"
   },
   {
@@ -4235,7 +4235,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Left-arm Fast Medium",
     "tier": "CAPPED",
     "basePrice": 4000000,
-    "image": "https://tse3.mm.bing.net/th/id/OIP.wgOkB9ypX4HWdgb0lZcG3AHaHa?r=0&pid=Api",
+    "image": "https://tse1.mm.bing.net/th/id/OIP.IAPR6I_h1wBjDcgpolzr4QHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":101,\"runs\":2543,\"wickets\":91,\"avg\":29.5,\"strikeRate\":161.1,\"economy\":7.82,\"fifties\":8,\"bbi\":\"4/22\"},\"t20\":{\"matches\":71,\"runs\":1653,\"wickets\":64,\"avg\":27.2,\"strikeRate\":\"157.1\",\"economy\":\"7.52\",\"fifties\":5,\"bbi\":\"3/16\"},\"odi\":{\"matches\":86,\"runs\":2797,\"wickets\":82,\"avg\":34.6,\"strikeRate\":98.4,\"economy\":5.35,\"fifties\":11,\"hundreds\":2,\"bbi\":\"4/35\"},\"test\":{\"matches\":35,\"runs\":2034,\"wickets\":73,\"avg\":33.2,\"strikeRate\":64.2,\"economy\":3.25,\"fifties\":7,\"hundreds\":3,\"bbi\":\"5/48\"}}"
   },
   {
@@ -4271,7 +4271,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Fast",
     "tier": "CAPPED",
     "basePrice": 4000000,
-    "image": "https://tse2.mm.bing.net/th/id/OIP.8dkfH6OKkdaP7TPHXAf3hQHaHa?r=0&pid=Api",
+    "image": "https://tse3.mm.bing.net/th/id/OIP.GdG0hhMCMU05HdBe_iHgRwHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":90,\"wickets\":121,\"economy\":7.45,\"avg\":25,\"bbi\":\"4/18\",\"runs\":225},\"t20\":{\"matches\":59,\"wickets\":71,\"economy\":\"7.05\",\"avg\":\"22.9\",\"bbi\":\"4/12\",\"runs\":118},\"odi\":{\"matches\":72,\"wickets\":104,\"economy\":\"5.25\",\"avg\":\"27.5\",\"bbi\":\"5/27\",\"runs\":288},\"test\":{\"matches\":34,\"wickets\":129,\"economy\":\"3.32\",\"avg\":\"26.2\",\"bbi\":\"6/38\",\"runs\":272}}"
   },
   {
@@ -4283,7 +4283,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Medium",
     "tier": "CAPPED",
     "basePrice": 4000000,
-    "image": "https://tse4.mm.bing.net/th/id/OIP._n9Uc-0ENQVs1Tu8WqYvqAHaHa?r=0&pid=Api",
+    "image": "https://tse3.mm.bing.net/th/id/OIP.ZHFuTMJm2TWXsI-Qi9ONRgHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":47,\"wickets\":58,\"economy\":8.38,\"avg\":26.1,\"bbi\":\"4/18\",\"runs\":118},\"t20\":{\"matches\":31,\"wickets\":37,\"economy\":\"7.98\",\"avg\":\"24.0\",\"bbi\":\"4/12\",\"runs\":62},\"odi\":{\"matches\":38,\"wickets\":55,\"economy\":\"6.18\",\"avg\":\"28.6\",\"bbi\":\"5/27\",\"runs\":152},\"test\":{\"matches\":28,\"wickets\":106,\"economy\":\"2.60\",\"avg\":\"27.3\",\"bbi\":\"6/38\",\"runs\":224}}"
   },
   {
@@ -4331,7 +4331,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Left-arm Wrist Spin",
     "tier": "CAPPED",
     "basePrice": 4000000,
-    "image": "https://tse3.mm.bing.net/th/id/OIP.2XaCep7MYLTh-16KxtdhVAHaHa?r=0&pid=Api",
+    "image": "https://tse1.mm.bing.net/th/id/OIP.bwpJBvHedVmOzsO8tizw5wHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":51,\"wickets\":67,\"economy\":8.03,\"avg\":23.3,\"bbi\":\"4/18\",\"runs\":128},\"t20\":{\"matches\":33,\"wickets\":40,\"economy\":\"7.63\",\"avg\":\"21.2\",\"bbi\":\"4/12\",\"runs\":66},\"odi\":{\"matches\":41,\"wickets\":59,\"economy\":\"5.83\",\"avg\":\"25.8\",\"bbi\":\"5/27\",\"runs\":164},\"test\":{\"matches\":24,\"wickets\":91,\"economy\":\"3.01\",\"avg\":\"24.5\",\"bbi\":\"6/38\",\"runs\":192}}"
   },
   {
@@ -4379,7 +4379,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Slow Left-arm Orthodox",
     "tier": "CAPPED",
     "basePrice": 4000000,
-    "image": "https://tse1.mm.bing.net/th/id/OIP.kus_NXwl37-QgbtwN408VAHaHa?r=0&pid=Api",
+    "image": "https://tse3.mm.bing.net/th/id/OIP.QiZV8Yi860T3XWqm0-2k1QHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":101,\"runs\":2280,\"wickets\":87,\"avg\":29.5,\"strikeRate\":156.9,\"economy\":9.11,\"fifties\":7,\"bbi\":\"4/22\"},\"t20\":{\"matches\":71,\"runs\":1482,\"wickets\":61,\"avg\":27.2,\"strikeRate\":\"152.9\",\"economy\":\"8.81\",\"fifties\":5,\"bbi\":\"3/16\"},\"odi\":{\"matches\":86,\"runs\":2508,\"wickets\":78,\"avg\":34.6,\"strikeRate\":98.4,\"economy\":5.35,\"fifties\":11,\"hundreds\":2,\"bbi\":\"4/35\"},\"test\":{\"matches\":35,\"runs\":1824,\"wickets\":70,\"avg\":33.2,\"strikeRate\":64.2,\"economy\":3.25,\"fifties\":7,\"hundreds\":3,\"bbi\":\"5/48\"}}"
   },
   {
@@ -4415,7 +4415,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Medium",
     "tier": "CAPPED",
     "basePrice": 4000000,
-    "image": "https://tse1.mm.bing.net/th/id/OIP.534jtQzVCU6LGA10h2TyXAHaHa?r=0&pid=Api",
+    "image": "https://tse2.mm.bing.net/th/id/OIP.aYVMK8-LAdg5MrbFF5WI0gHaJQ?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":70,\"runs\":1988,\"wickets\":55,\"avg\":29.5,\"strikeRate\":168.4,\"economy\":9.14,\"fifties\":6,\"bbi\":\"4/22\"},\"t20\":{\"matches\":49,\"runs\":1292,\"wickets\":39,\"avg\":27.2,\"strikeRate\":\"164.4\",\"economy\":\"8.84\",\"fifties\":5,\"bbi\":\"3/16\"},\"odi\":{\"matches\":60,\"runs\":2187,\"wickets\":50,\"avg\":34.6,\"strikeRate\":98.4,\"economy\":5.35,\"fifties\":11,\"hundreds\":2,\"bbi\":\"4/35\"},\"test\":{\"matches\":25,\"runs\":1590,\"wickets\":44,\"avg\":33.2,\"strikeRate\":64.2,\"economy\":3.25,\"fifties\":7,\"hundreds\":3,\"bbi\":\"5/48\"}}"
   },
   {
@@ -4427,7 +4427,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Slow Left-arm Orthodox",
     "tier": "CAPPED",
     "basePrice": 4000000,
-    "image": "https://tse3.mm.bing.net/th/id/OIP.pOKBpUy4VL3834sngF4q8wHaHa?r=0&pid=Api",
+    "image": "https://tse4.mm.bing.net/th/id/OIP.cJ6MhLiYkf5zFOJ2Mfck0QHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":56,\"runs\":1541,\"wickets\":53,\"avg\":29.5,\"strikeRate\":158.9,\"economy\":8.72,\"fifties\":5,\"bbi\":\"4/22\"},\"t20\":{\"matches\":39,\"runs\":1002,\"wickets\":37,\"avg\":27.2,\"strikeRate\":\"154.9\",\"economy\":\"8.42\",\"fifties\":5,\"bbi\":\"3/16\"},\"odi\":{\"matches\":48,\"runs\":1695,\"wickets\":48,\"avg\":34.6,\"strikeRate\":98.4,\"economy\":5.35,\"fifties\":11,\"hundreds\":2,\"bbi\":\"4/35\"},\"test\":{\"matches\":20,\"runs\":1233,\"wickets\":42,\"avg\":33.2,\"strikeRate\":64.2,\"economy\":3.25,\"fifties\":7,\"hundreds\":3,\"bbi\":\"5/48\"}}"
   },
   {
@@ -4595,7 +4595,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Slow Left-arm Orthodox",
     "tier": "CAPPED",
     "basePrice": 3000000,
-    "image": "https://tse2.mm.bing.net/th/id/OIP.tUwLHsgrT-di5Ig2inD51AHaHa?r=0&pid=Api",
+    "image": "https://tse3.mm.bing.net/th/id/OIP.8jMr_LfIG8aEo2-gI4exfAHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":64,\"runs\":1700,\"wickets\":65,\"avg\":29.5,\"strikeRate\":158,\"economy\":8.93,\"fifties\":5,\"bbi\":\"4/22\"},\"t20\":{\"matches\":45,\"runs\":1105,\"wickets\":46,\"avg\":27.2,\"strikeRate\":\"154.0\",\"economy\":\"8.63\",\"fifties\":5,\"bbi\":\"3/16\"},\"odi\":{\"matches\":54,\"runs\":1870,\"wickets\":59,\"avg\":34.6,\"strikeRate\":98.4,\"economy\":5.35,\"fifties\":11,\"hundreds\":2,\"bbi\":\"4/35\"},\"test\":{\"matches\":22,\"runs\":1360,\"wickets\":52,\"avg\":33.2,\"strikeRate\":64.2,\"economy\":3.25,\"fifties\":7,\"hundreds\":3,\"bbi\":\"5/48\"}}"
   },
   {
@@ -4739,7 +4739,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Legbreak",
     "tier": "CAPPED",
     "basePrice": 3000000,
-    "image": "https://tse2.mm.bing.net/th/id/OIP.C9SLC2ikJbrQvGjcECfYJwHaHa?r=0&pid=Api",
+    "image": "https://tse3.mm.bing.net/th/id/OIP.G5MX_mJ35TfnoYFNBi_8bgHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":60,\"wickets\":84,\"economy\":7.75,\"avg\":24.7,\"bbi\":\"4/18\",\"runs\":150},\"t20\":{\"matches\":39,\"wickets\":47,\"economy\":\"7.35\",\"avg\":\"22.6\",\"bbi\":\"4/12\",\"runs\":78},\"odi\":{\"matches\":48,\"wickets\":70,\"economy\":\"5.55\",\"avg\":\"27.2\",\"bbi\":\"5/27\",\"runs\":192},\"test\":{\"matches\":33,\"wickets\":125,\"economy\":\"3.09\",\"avg\":\"25.9\",\"bbi\":\"6/38\",\"runs\":264}}"
   },
   {
@@ -4883,7 +4883,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Offbreak",
     "tier": "CAPPED",
     "basePrice": 3000000,
-    "image": "https://tse3.mm.bing.net/th/id/OIP.B6rFTtWHRJ-ukEIRfeccxAHaHa?r=0&pid=Api",
+    "image": "https://tse3.mm.bing.net/th/id/OIP.lXNTdPNhaWkvM3bwXHpWTQHaJQ?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":108,\"runs\":3140,\"avg\":34.2,\"strikeRate\":138.5,\"hundreds\":0,\"fifties\":12,\"wickets\":0},\"t20\":{\"matches\":76,\"runs\":2080,\"avg\":\"32.7\",\"strikeRate\":\"136.5\",\"hundreds\":0,\"fifties\":7,\"wickets\":0},\"odi\":{\"matches\":97,\"runs\":3275,\"avg\":\"42.4\",\"strikeRate\":\"96.1\",\"hundreds\":0,\"fifties\":11,\"wickets\":0},\"test\":{\"matches\":13,\"runs\":862,\"avg\":\"43.7\",\"strikeRate\":\"58.3\",\"hundreds\":2,\"fifties\":4,\"wickets\":0}}"
   },
   {
@@ -4907,7 +4907,7 @@ export const INITIAL_PLAYERS = [
     "bowlingStyle": "Right-arm Offbreak",
     "tier": "CAPPED",
     "basePrice": 3000000,
-    "image": "https://tse4.mm.bing.net/th/id/OIP.7UouoN2hhBVRWCjcx-3x8AHaHa?r=0&pid=Api",
+    "image": "https://tse1.mm.bing.net/th/id/OIP.QS-2J7IdoMhR3j9zAd016wHaHa?r=0&pid=Api",
     "stats": "{\"ipl\":{\"matches\":67,\"runs\":2005,\"avg\":35.2,\"strikeRate\":135.1,\"hundreds\":0,\"fifties\":7,\"dismissals\":60},\"t20\":{\"matches\":40,\"runs\":1203,\"avg\":\"33.2\",\"strikeRate\":135.1,\"fifties\":6,\"dismissals\":40},\"odi\":{\"matches\":54,\"runs\":2206,\"avg\":\"41.2\",\"strikeRate\":92.5,\"hundreds\":4,\"fifties\":14,\"dismissals\":60},\"test\":{\"matches\":27,\"runs\":1404,\"avg\":\"43.2\",\"strikeRate\":62,\"hundreds\":5,\"fifties\":11,\"dismissals\":80}}"
   },
   {
