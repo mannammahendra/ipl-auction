@@ -446,6 +446,14 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
     if (!room) throw new BadRequestException('Invalid room');
     if (room.isPaused) throw new BadRequestException('Cannot nominate a player while the auction is paused');
 
+    // If another player was actively nominated on the podium, revert them to UPCOMING so they are not orphaned
+    if (room.currentAuctionPlayerId && room.currentAuctionPlayerId !== auctionPlayerId) {
+      await this.prisma.auctionPlayer.updateMany({
+        where: { id: room.currentAuctionPlayerId, status: 'NOMINATED' },
+        data: { status: 'UPCOMING', nominatedAt: null },
+      });
+    }
+
     const updatedAuctionPlayer = await this.prisma.auctionPlayer.update({
       where: { id: auctionPlayerId },
       data: {
@@ -605,6 +613,12 @@ export class AuctionEngine implements OnApplicationBootstrap, OnModuleDestroy {
 
       if (room.currentBidTeamId === team.id) {
         throw new BadRequestException('Your team already holds the highest bid!');
+      }
+
+      if (customAmount !== undefined) {
+        if (typeof customAmount !== 'number' || isNaN(customAmount) || !isFinite(customAmount) || customAmount <= 0) {
+          throw new BadRequestException('Invalid bid amount');
+        }
       }
 
       const currentBid = room.currentBidAmount || 0;
