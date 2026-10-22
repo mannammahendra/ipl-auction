@@ -65,6 +65,27 @@ export default function LobbyPage() {
   const [startingAuction, setStartingAuction] = useState<boolean>(false);
   const [roomAlert, setRoomAlert] = useState<string | null>(null);
 
+  const isHost = Boolean(room && (room.hostId === user?.id || room.members?.some((m) => m.userId === user?.id && m.isHost)));
+  const myMember = room?.members?.find((m) => m.userId === user?.id);
+  const myTeamId = myMember?.teamId;
+
+  const sortedLobbyTeams = useMemo(() => {
+    if (!room?.teams) return [];
+    return [...room.teams].sort((a, b) => {
+      const aSelectedByMe = a.id === myTeamId;
+      const bSelectedByMe = b.id === myTeamId;
+      if (aSelectedByMe && !bSelectedByMe) return -1;
+      if (!aSelectedByMe && bSelectedByMe) return 1;
+
+      const aClaimed = room.members?.some((m: RoomMember) => m.teamId === a.id);
+      const bClaimed = room.members?.some((m: RoomMember) => m.teamId === b.id);
+      if (aClaimed && !bClaimed) return -1;
+      if (!aClaimed && bClaimed) return 1;
+
+      return a.name.localeCompare(b.name);
+    });
+  }, [room?.teams, myTeamId, room?.members]);
+
   useEffect(() => {
     setIsMounted(true);
   }, []);
@@ -376,26 +397,6 @@ export default function LobbyPage() {
     );
   }
 
-  const isHost = room.hostId === user?.id || room.members?.some((m) => m.userId === user?.id && m.isHost);
-  const myMember = room.members?.find((m) => m.userId === user?.id);
-  const myTeamId = myMember?.teamId;
-
-  const sortedLobbyTeams = useMemo(() => {
-    if (!room?.teams) return [];
-    return [...room.teams].sort((a, b) => {
-      const aSelectedByMe = a.id === myTeamId;
-      const bSelectedByMe = b.id === myTeamId;
-      if (aSelectedByMe && !bSelectedByMe) return -1;
-      if (!aSelectedByMe && bSelectedByMe) return 1;
-
-      const aClaimed = room.members?.some((m: RoomMember) => m.teamId === a.id);
-      const bClaimed = room.members?.some((m: RoomMember) => m.teamId === b.id);
-      if (aClaimed && !bClaimed) return -1;
-      if (!aClaimed && bClaimed) return 1;
-
-      return a.name.localeCompare(b.name);
-    });
-  }, [room?.teams, myTeamId, room?.members]);
 
   return (
     <div className="min-h-screen text-slate-100 flex flex-col">

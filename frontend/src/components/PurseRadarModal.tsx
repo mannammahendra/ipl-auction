@@ -48,27 +48,25 @@ export const PurseRadarModal: React.FC<PurseRadarModalProps> = ({ isOpen, onClos
   const { room, user } = useAuctionStore();
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
 
-  if (!isOpen || !room) return null;
-
-  const minSquad = room.minSquad || 18;
-  const maxSquad = room.maxSquad || 25;
-  const maxOverseas = room.maxOverseas || 8;
+  const minSquad = room?.minSquad || 18;
+  const maxSquad = room?.maxSquad || 25;
+  const maxOverseas = room?.maxOverseas || 8;
   const minBasePrice = 2000000; // 20 Lakhs
 
-  const myMember = room.members?.find((m) => m.userId === user?.id);
-  const myTeam = room.teams?.find((t) => t.id === myMember?.teamId);
+  const myMember = room?.members?.find((m) => m.userId === user?.id);
+  const myTeam = room?.teams?.find((t) => t.id === myMember?.teamId);
   const myTeamId = myMember?.teamId;
 
   const selectedTeamIds = useMemo(() => {
     return new Set(
-      (room.members || [])
+      (room?.members || [])
         .map((m) => m.teamId)
         .filter((id): id is string => Boolean(id))
     );
-  }, [room.members]);
+  }, [room?.members]);
 
   const sortedRoomTeams = useMemo(() => {
-    return [...(room.teams || [])].sort((a, b) => {
+    return [...(room?.teams || [])].sort((a, b) => {
       const aIsMyTeam = a.id === myTeamId;
       const bIsMyTeam = b.id === myTeamId;
       if (aIsMyTeam && !bIsMyTeam) return -1;
@@ -81,7 +79,9 @@ export const PurseRadarModal: React.FC<PurseRadarModalProps> = ({ isOpen, onClos
 
       return b.currentPurse - a.currentPurse;
     });
-  }, [room.teams, myTeamId, selectedTeamIds]);
+  }, [room?.teams, myTeamId, selectedTeamIds]);
+
+  if (!isOpen || !room) return null;
 
   const activeTeamId = selectedTeamId || myTeam?.id || sortedRoomTeams[0]?.id;
   const activeTeam = sortedRoomTeams.find((t) => t.id === activeTeamId) || sortedRoomTeams[0] || room.teams[0];

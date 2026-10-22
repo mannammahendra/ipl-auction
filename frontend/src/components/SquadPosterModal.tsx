@@ -31,9 +31,8 @@ export const SquadPosterModal: React.FC<SquadPosterModalProps> = ({
   const [downloading, setDownloading] = useState(false);
   const posterRef = useRef<HTMLDivElement>(null);
 
-  if (!isOpen || !team || !room) return null;
-
   const squad: SquadMember[] = React.useMemo(() => {
+    if (!team || !room) return [];
     const list: SquadMember[] = [];
     const seen = new Set<string>();
 
@@ -67,7 +66,9 @@ export const SquadPosterModal: React.FC<SquadPosterModalProps> = ({
     }
 
     return list;
-  }, [team, room.auctionPlayers]);
+  }, [team, room?.auctionPlayers]);
+
+  if (!isOpen || !team || !room) return null;
 
   const totalSpent = (team.initialPurse || 1200000000) - team.currentPurse;
   const overseasCount = squad.filter((s) => s.player?.isOverseas).length;
