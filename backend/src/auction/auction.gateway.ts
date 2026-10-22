@@ -523,7 +523,7 @@ export class AuctionGateway implements OnGatewayConnection, OnGatewayDisconnect 
     @MessageBody() data: { roomId: string; text: string },
   ) {
     const session = this.activeSockets.get(client.id);
-    if (!session || !data?.text?.trim() || !data?.roomId) return;
+    if (!session || typeof data?.text !== 'string' || !data.text.trim() || !data?.roomId) return;
 
     const member = await this.prisma.roomMember.findUnique({
       where: { roomId_userId: { roomId: data.roomId, userId: session.userId } },
@@ -544,7 +544,7 @@ export class AuctionGateway implements OnGatewayConnection, OnGatewayDisconnect 
       teamShortName: member?.team?.shortName,
       teamColor: member?.team?.color,
       teamLogo: member?.team?.logo,
-      text: data.text.trim(),
+      text: data.text.trim().slice(0, 500),
       timestamp: Date.now(),
     };
 
